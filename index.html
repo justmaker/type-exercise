@@ -1,28 +1,59 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Typing Speed Test</title>
+    <title>打字速度測試 | Typing Speed Test</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
     <div class="container">
-        <h1>Typing Speed Test</h1>
+        <h1>打字速度測試</h1>
+
+        <div class="mode-switch">
+            <button id="mode-en" class="mode-btn">English</button>
+            <button id="mode-zh" class="mode-btn active">中文</button>
+        </div>
 
         <div id="text-display"></div>
 
-        <textarea id="input-area" placeholder="Start typing here..." autofocus></textarea>
+        <textarea id="input-area" placeholder="開始輸入..." autofocus></textarea>
+
+        <p class="hint">💡 按 <kbd>Tab</kbd> 查看當前字的編碼提示</p>
 
         <div id="results" class="hidden">
-            <h2>Results</h2>
-            <p>Speed: <span id="wpm">0</span> WPM</p>
-            <p>Accuracy: <span id="accuracy">0</span>%</p>
+            <h2>結果</h2>
+            <p>速度: <span id="wpm">0</span> WPM</p>
+            <p>準確率: <span id="accuracy">0</span>%</p>
         </div>
 
-        <button id="restart-btn" class="hidden">Try Again</button>
+        <button id="restart-btn" class="hidden">再試一次</button>
     </div>
 
+    <div id="encoding-hint" class="hidden">
+        <div class="encoding-title">編碼提示</div>
+        <div class="encoding-char" id="hint-char"></div>
+        <div class="encoding-list">
+            <div class="encoding-item">
+                <span class="encoding-label">注音</span>
+                <span class="encoding-value" id="hint-zhuyin">-</span>
+            </div>
+            <div class="encoding-item">
+                <span class="encoding-label">倉頡</span>
+                <span class="encoding-value" id="hint-cangjie">-</span>
+            </div>
+            <div class="encoding-item">
+                <span class="encoding-label">無蝦米</span>
+                <span class="encoding-value" id="hint-boshiamy">-</span>
+            </div>
+            <div class="encoding-item">
+                <span class="encoding-label">拼音</span>
+                <span class="encoding-value" id="hint-pinyin">-</span>
+            </div>
+        </div>
+    </div>
+
+    <script src="encoding-data.js"></script>
     <script src="script.js"></script>
 </body>
 </html>

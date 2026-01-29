@@ -31,11 +31,17 @@
 
         <div id="results" class="hidden">
             <h2>結果</h2>
+            <div id="achievement" class="hidden"></div>
             <p>速度: <span id="wpm">0</span> WPM</p>
             <p>準確率: <span id="accuracy">0</span>%</p>
+            
+            <div id="leaderboard">
+                <h3>🏆 前五名排行榜</h3>
+                <ol id="leaderboard-list"></ol>
+            </div>
         </div>
 
-        <button id="restart-btn" class="hidden">再試一次</button>
+        <button id="restart-btn" class="hidden">再試一次 (空白鍵)</button>
     </div>
 
     <div id="encoding-hint" class="hidden">

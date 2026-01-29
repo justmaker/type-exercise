@@ -268,3 +268,86 @@ h1 {
     padding: 0.2rem 0.5rem;
     border-radius: 4px;
 }
+
+/* 成就標示 */
+.achievement {
+    background-color: #0f0f23;
+    padding: 0.75rem 1rem;
+    border-radius: 8px;
+    margin-bottom: 1rem;
+    font-size: 1.1rem;
+}
+
+.achievement.new-record {
+    background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+    color: #000;
+    animation: pulse 0.5s ease-in-out 3;
+}
+
+.achievement.top-five {
+    background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+    color: #fff;
+}
+
+@keyframes pulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.02); }
+}
+
+/* 排行榜 */
+#leaderboard {
+    margin-top: 1.5rem;
+    padding-top: 1rem;
+    border-top: 1px solid #333;
+}
+
+#leaderboard h3 {
+    margin-bottom: 0.75rem;
+    font-size: 1rem;
+    color: #ccc;
+}
+
+#leaderboard-list {
+    list-style: none;
+    text-align: left;
+    padding: 0;
+}
+
+#leaderboard-list li {
+    padding: 0.5rem 0.75rem;
+    margin: 0.25rem 0;
+    background-color: #0f0f23;
+    border-radius: 6px;
+    font-size: 0.95rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+#leaderboard-list li.current {
+    background: linear-gradient(135deg, #4ade80 0%, #22c55e 100%);
+    color: #000;
+    font-weight: bold;
+}
+
+#leaderboard-list li.empty {
+    color: #888;
+    font-style: italic;
+    justify-content: center;
+}
+
+#leaderboard-list .timestamp {
+    font-size: 0.75rem;
+    color: #888;
+    margin-left: auto;
+}
+
+#leaderboard-list li.current .timestamp {
+    color: #0f0f23;
+}
+
+#leaderboard-list .current-badge {
+    font-size: 0.8rem;
+    color: #000;
+    font-weight: normal;
+}

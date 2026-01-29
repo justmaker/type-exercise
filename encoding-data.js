@@ -366,6 +366,21 @@ const encodingData = {
     '者': { zhuyin: 'ㄓㄜˇ', cangjie: '十大日', boshiamy: 'JKA', pinyin: 'zhě' },
     '比': { zhuyin: 'ㄅㄧˇ', cangjie: '心心', boshiamy: 'PP', pinyin: 'bǐ' },
     '較': { zhuyin: 'ㄐㄧㄠˋ', cangjie: '十十卜金大', boshiamy: 'JJYCK', pinyin: 'jiào' },
+
+    // ===== 新增常用字 =====
+    '鄭': { zhuyin: 'ㄓㄥˋ', cangjie: '月月弓中', boshiamy: 'BBNL', pinyin: 'zhèng' },
+    '染': { zhuyin: 'ㄖㄢˇ', cangjie: '水木尸', boshiamy: 'EDS', pinyin: 'rǎn' },
+    '禽': { zhuyin: 'ㄑㄧㄣˊ', cangjie: '人戈火', boshiamy: 'OIF', pinyin: 'qín' },
+    '流': { zhuyin: 'ㄌㄧㄡˊ', cangjie: '水卜戈山', boshiamy: 'EYIU', pinyin: 'liú' },
+    '感': { zhuyin: 'ㄍㄢˇ', cangjie: '戈口心', boshiamy: 'IRP', pinyin: 'gǎn' },
+    '牧': { zhuyin: 'ㄇㄨˋ', cangjie: '竹手人大', boshiamy: 'HQOK', pinyin: 'mù' },
+    '標': { zhuyin: 'ㄅㄧㄠ', cangjie: '木一田火', boshiamy: 'DMWF', pinyin: 'biāo' },
+    '榜': { zhuyin: 'ㄅㄤˇ', cangjie: '木卜月尸', boshiamy: 'DYBS', pinyin: 'bǎng' },
+    '福': { zhuyin: 'ㄈㄨˊ', cangjie: '戈火一口田', boshiamy: 'IFMRW', pinyin: 'fú' },
+    '蛋': { zhuyin: 'ㄉㄢˋ', cangjie: '日火中戈', boshiamy: 'AFLI', pinyin: 'dàn' },
+    '透': { zhuyin: 'ㄊㄡˋ', cangjie: '卜竹木月', boshiamy: 'YHDB', pinyin: 'tòu' },
+    '賣': { zhuyin: 'ㄇㄞˋ', cangjie: '土田金', boshiamy: 'GWC', pinyin: 'mài' },
+    '全': { zhuyin: 'ㄑㄩㄢˊ', cangjie: '人一土', boshiamy: 'OMG', pinyin: 'quán' },
 };
 
 // 編碼快取

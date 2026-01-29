@@ -15,7 +15,9 @@ const STORAGE_KEYS = {
     NEWS_DATE: 'typing_news_date',
     NEWS_ZH: 'typing_news_zh',
     NEWS_EN: 'typing_news_en',
-    ENCODING_CACHE: 'typing_encoding_cache'
+    ENCODING_CACHE: 'typing_encoding_cache',
+    LEADERBOARD_ZH: 'typing_leaderboard_zh',
+    LEADERBOARD_EN: 'typing_leaderboard_en'
 };
 
 // 當前模式 ('zh' 或 'en')
@@ -45,6 +47,8 @@ const accuracySpan = document.getElementById('accuracy');
 const restartBtn = document.getElementById('restart-btn');
 const modeEnBtn = document.getElementById('mode-en');
 const modeZhBtn = document.getElementById('mode-zh');
+const achievementDiv = document.getElementById('achievement');
+const leaderboardList = document.getElementById('leaderboard-list');
 
 // 編碼提示元素
 const encodingHint = document.getElementById('encoding-hint');
@@ -298,7 +302,7 @@ function startGame() {
 
     inputArea.value = '';
     inputArea.disabled = false;
-    inputArea.placeholder = currentMode === 'zh' ? '開始輸入...' : 'Start typing here...';
+    inputArea.placeholder = currentMode === 'zh' ? '開始輸入...' : 'Start typing...';
     inputArea.focus();
 
     resultsDiv.classList.add('hidden');
@@ -358,10 +362,96 @@ function completeTest() {
     wpmSpan.textContent = wpm;
     accuracySpan.textContent = accuracy;
 
+    // 更新排行榜並檢查成就
+    const result = updateLeaderboard(wpm, accuracy);
+    showAchievement(result);
+    renderLeaderboard(result.currentRank);
+
     inputArea.disabled = true;
     resultsDiv.classList.remove('hidden');
     restartBtn.classList.remove('hidden');
     hideEncodingHint();
+}
+
+// ===== 排行榜功能 =====
+
+function getLeaderboardKey() {
+    return currentMode === 'zh' ? STORAGE_KEYS.LEADERBOARD_ZH : STORAGE_KEYS.LEADERBOARD_EN;
+}
+
+function getLeaderboard() {
+    const data = loadFromStorage(getLeaderboardKey());
+    return data || [];
+}
+
+function saveLeaderboard(leaderboard) {
+    saveToStorage(getLeaderboardKey(), leaderboard);
+}
+
+function updateLeaderboard(wpm, accuracy) {
+    const leaderboard = getLeaderboard();
+    const now = new Date();
+    const timestamp = now.toLocaleString('zh-TW');
+
+    const newEntry = { wpm, accuracy, timestamp };
+
+    // 檢查是否破紀錄（新的最高 WPM）
+    const isNewRecord = leaderboard.length === 0 || wpm > leaderboard[0].wpm;
+
+    // 加入新紀錄
+    leaderboard.push(newEntry);
+
+    // 按 WPM 排序（高到低）
+    leaderboard.sort((a, b) => b.wpm - a.wpm);
+
+    // 找到當前成績的排名
+    const currentRank = leaderboard.findIndex(e => e === newEntry) + 1;
+
+    // 只保留前五名
+    const topFive = leaderboard.slice(0, 5);
+
+    // 檢查是否進入前五名
+    const isTopFive = currentRank <= 5;
+
+    saveLeaderboard(topFive);
+
+    return { isNewRecord, isTopFive, currentRank };
+}
+
+function showAchievement(result) {
+    achievementDiv.classList.remove('hidden');
+
+    if (result.isNewRecord) {
+        achievementDiv.innerHTML = '🎉 <strong>新紀錄！</strong> 你創造了新的最高 WPM！';
+        achievementDiv.className = 'achievement new-record';
+    } else if (result.isTopFive) {
+        achievementDiv.innerHTML = `🏅 <strong>進入前五名！</strong> 目前排名第 ${result.currentRank} 名`;
+        achievementDiv.className = 'achievement top-five';
+    } else {
+        achievementDiv.innerHTML = `目前排名第 ${result.currentRank} 名，繼續加油！`;
+        achievementDiv.className = 'achievement';
+    }
+}
+
+function renderLeaderboard(currentRank) {
+    const leaderboard = getLeaderboard();
+
+    if (leaderboard.length === 0) {
+        leaderboardList.innerHTML = '<li class="empty">尚無紀錄</li>';
+        return;
+    }
+
+    leaderboardList.innerHTML = leaderboard.map((entry, index) => {
+        const rank = index + 1;
+        const isCurrentResult = rank === currentRank;
+        const medal = rank === 1 ? '🥇' : rank === 2 ? '🥈' : rank === 3 ? '🥉' : '';
+
+        return `<li class="${isCurrentResult ? 'current' : ''}">
+            ${medal} <strong>${entry.wpm}</strong> WPM (${entry.accuracy}%) 
+            <span class="timestamp">${entry.timestamp}</span>
+            ${isCurrentResult ? '<span class="current-badge">← 本次</span>' : ''}
+        </li>`;
+    }).join('');
 }
 
 // ===== 編碼提示 =====
@@ -446,8 +536,12 @@ inputArea.addEventListener('input', (e) => {
     updateDisplay(inputText);
     hideEncodingHint();
 
+    // 當輸入長度達到且最後一個字正確時自動完成
     if (inputText.length >= currentPassage.length) {
-        completeTest();
+        const lastIndex = currentPassage.length - 1;
+        if (inputText[lastIndex] === currentPassage[lastIndex]) {
+            completeTest();
+        }
     }
 });
 
@@ -457,6 +551,19 @@ inputArea.addEventListener('keydown', (e) => {
         if (!isTestComplete) {
             showEncodingHint();
         }
+    }
+
+    // 按 Esc 鍵強制結束測試
+    if (e.key === 'Escape') {
+        if (!isTestComplete && startTime !== null) {
+            completeTest();
+        }
+    }
+
+    // 測試完成後按空白鍵重新開始
+    if (e.key === ' ' && isTestComplete) {
+        e.preventDefault();
+        startGame();
     }
 });
 

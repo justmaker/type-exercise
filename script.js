@@ -274,11 +274,37 @@ async function loadTodayNews() {
         if (savedZh && savedZh.length > 0 && savedEn && savedEn.length > 0) {
             newsData.zh = savedZh;
             newsData.en = savedEn;
+            console.log('Loaded news from localStorage cache');
             return true;
         }
     }
 
-    // 需要重新抓取
+    // 優先嘗試載入 Python 後端生成的 daily_news.json
+    updateLoadingStatus('載入每日新聞...');
+    try {
+        const response = await fetch('daily_news.json');
+        if (response.ok) {
+            const data = await response.json();
+
+            // 檢查日期是否為今天
+            if (data.date === today && data.zh && data.en) {
+                newsData.zh = data.zh;
+                newsData.en = data.en;
+
+                // 儲存到 localStorage
+                saveToStorage(STORAGE_KEYS.NEWS_DATE, today);
+                saveToStorage(STORAGE_KEYS.NEWS_ZH, newsData.zh);
+                saveToStorage(STORAGE_KEYS.NEWS_EN, newsData.en);
+
+                console.log('Loaded news from daily_news.json (Python backend)');
+                return false;
+            }
+        }
+    } catch (error) {
+        console.warn('Failed to load daily_news.json, falling back to RSS:', error.message);
+    }
+
+    // 如果 daily_news.json 不存在或過期，嘗試從 RSS 抓取
     updateLoadingStatus('載入中文新聞...');
     const zhNews = await fetchNewsFromRSS('zh');
 
@@ -286,23 +312,15 @@ async function loadTodayNews() {
     const enNews = await fetchNewsFromRSS('en');
 
     // 如果抓取失敗，使用備用文章
-    newsData.zh = zhNews.length > 0 ? zhNews : [
-        "科技發展日新月異，人工智慧正在改變我們的生活方式。",
-        "全球氣候變遷議題持續受到國際社會高度關注。",
-        "經濟市場波動劇烈，投資人應謹慎評估風險。"
-    ];
-
-    newsData.en = enNews.length > 0 ? enNews : [
-        "Technology continues to evolve rapidly, transforming how we live and work.",
-        "Global markets show mixed signals amid economic uncertainty worldwide.",
-        "Scientists make breakthrough discoveries in renewable energy research."
-    ];
+    newsData.zh = zhNews.length > 0 ? zhNews : FALLBACK_SENTENCES.zh;
+    newsData.en = enNews.length > 0 ? enNews : FALLBACK_SENTENCES.en;
 
     // 儲存到 localStorage
     saveToStorage(STORAGE_KEYS.NEWS_DATE, today);
     saveToStorage(STORAGE_KEYS.NEWS_ZH, newsData.zh);
     saveToStorage(STORAGE_KEYS.NEWS_EN, newsData.en);
 
+    console.log('Loaded news from RSS feeds');
     return false;
 }
 

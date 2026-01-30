@@ -18,7 +18,7 @@ RSS_FEEDS = {
 }
 
 # Number of news items to fetch per language
-NEWS_COUNT = 5
+NEWS_COUNT = 20
 
 
 def normalize_punctuation(text: str) -> str:

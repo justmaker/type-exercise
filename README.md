@@ -6,13 +6,11 @@
 
 - ✅ **雙語支援**：中文 / English
 - ✅ **每日新聞**：自動抓取當日新聞作為練習文本
-- ✅ **字碼查詢**：按 Tab 查看當前字的編碼
-  - 注音（Zhuyin）
-  - 倉頡（Cangjie）
-  - 無蝦米（Boshiamy）
-  - 拼音（Pinyin）
-- ✅ **完整字典**：13,061 個繁體中文字
-- ✅ **成績記錄**：WPM、正確率、排行榜
+- ✅ **字碼查詢**：按 `Tab` 查看當前字的編碼
+  - 注音（Zhuyin）、倉頡（Cangjie）、無蝦米（Boshiamy）、拼音（Pinyin）
+- ✅ **快捷重啟**：測試完成後按 `Enter` 或 `Space` 即可「再試一次」
+- ✅ **提早結束**：練習中可按 `Esc` 強制結束測試
+- ✅ **成績記錄**：WPM、正確率、破紀錄提示與排行榜
 
 ## 快速開始
 
@@ -42,9 +40,9 @@ python3 -m http.server 8080
 ## 檔案說明
 
 ### 核心檔案
-- `index.html` - 主頁面
-- `script.js` - 遊戲邏輯
-- `style.css` - 樣式
+- `index.html` - 主頁面（包含 Esc 結束與 Enter 重啟提示）
+- `script.js` - 遊戲核心邏輯（全域按鍵監聽）
+- `style.css` - 現代化暗色系風格樣式
 
 ### 字典資料
 - `dictionary.json` - 字典原始資料（Array 格式）
@@ -184,4 +182,4 @@ A: 在 `cin-tables/` 中新增對應的 `.cin` 或 `.txt` 檔案，然後執行 
 
 ## 作者
 
-Rex Hsu
+Justmaker

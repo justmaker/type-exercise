@@ -19,6 +19,39 @@ const STORAGE_KEYS = {
     LEADERBOARD_ZH: 'typing_leaderboard_zh',
     LEADERBOARD_EN: 'typing_leaderboard_en'
 };
+// 字典資料 (從 dictionary-data.js 預載入，或從 dictionary.json 動態載入)
+// 格式: { char: { zhuyin, cangjie, boshiamy, pinyin } }
+// 注意: 如果 dictionary-data.js 已載入，dictionaryData 會被覆蓋
+if (typeof dictionaryData === 'undefined') {
+    var dictionaryData = {};
+}
+
+// 載入 dictionary.json 並轉換格式（僅當 dictionaryData 為空時）
+async function loadDictionary() {
+    // 如果 dictionaryData 已從 dictionary-data.js 預載入，就跳過
+    if (Object.keys(dictionaryData).length > 0) {
+        console.log(`Dictionary pre-loaded: ${Object.keys(dictionaryData).length} characters`);
+        return true;
+    }
+
+    // 否則嘗試用 fetch 載入 dictionary.json
+    try {
+        const response = await fetch('dictionary.json');
+        if (response.ok) {
+            const data = await response.json();
+            // 將 Array 格式轉換為 Object 格式
+            data.forEach(entry => {
+                const [char, zhuyin, cangjie, boshiamy, pinyin] = entry;
+                dictionaryData[char] = { zhuyin, cangjie, boshiamy, pinyin };
+            });
+            console.log(`Dictionary loaded via fetch: ${Object.keys(dictionaryData).length} characters`);
+            return true;
+        }
+    } catch (error) {
+        console.warn('Failed to load dictionary.json (this is OK if using file:// protocol):', error.message);
+    }
+    return false;
+}
 
 // 當前模式 ('zh' 或 'en')
 let currentMode = 'zh';
@@ -27,7 +60,25 @@ let startTime = null;
 let errorCount = 0;
 let isTestComplete = false;
 
-// 新聞資料（從 localStorage 載入）
+// 新聞資料（從 localStorage 載入，或使用備用句子）
+// 備用句子：當 fetch 無法載入新聞時使用（例如 file:// 協議）
+const FALLBACK_SENTENCES = {
+    zh: [
+        '科技發展日新月異，人工智慧正在改變我們的生活方式。',
+        '全球暖化問題日益嚴重，各國紛紛提出減碳目標。',
+        '教育是國家發展的根本，培養人才是最重要的投資。',
+        '健康飲食和規律運動是維持身體健康的不二法門。',
+        '閱讀能夠開拓視野，增進知識，培養獨立思考能力。'
+    ],
+    en: [
+        'Technology advances rapidly, transforming how we live and work.',
+        'Climate change poses significant challenges to global communities.',
+        'Education empowers individuals and drives economic growth.',
+        'Regular exercise and balanced nutrition promote well-being.',
+        'Reading expands horizons and cultivates critical thinking.'
+    ]
+};
+
 let newsData = {
     zh: [],
     en: []
@@ -98,11 +149,15 @@ function saveEncodingCache() {
 
 // 取得編碼（同步，從快取或本地資料庫）
 function getCachedEncoding(char) {
-    // 先檢查持久化快取
+    // 1. 先檢查新的 dictionary.json 資料（優先）
+    if (dictionaryData[char]) {
+        return dictionaryData[char];
+    }
+    // 2. 再檢查持久化快取
     if (persistentEncodingCache[char]) {
         return persistentEncodingCache[char];
     }
-    // 再檢查本地資料庫
+    // 3. 最後檢查舊的本地資料庫（encoding-data.js，向後相容）
     if (typeof encodingData !== 'undefined' && encodingData[char]) {
         return encodingData[char];
     }
@@ -111,8 +166,8 @@ function getCachedEncoding(char) {
 
 // 預先查詢單一字元編碼並快取
 async function prefetchEncodingForChar(char) {
-    // 已有資料就跳過
-    if (persistentEncodingCache[char] || (typeof encodingData !== 'undefined' && encodingData[char])) {
+    // 已有資料就跳過（優先檢查 dictionary.json）
+    if (dictionaryData[char] || persistentEncodingCache[char] || (typeof encodingData !== 'undefined' && encodingData[char])) {
         return;
     }
 
@@ -138,8 +193,9 @@ async function prefetchAllEncodings(texts) {
     const allText = texts.join('');
     const chineseChars = [...new Set(allText.split('').filter(isChinese))];
 
-    // 找出需要查詢的字元
+    // 找出需要查詢的字元（優先檢查 dictionary.json）
     const charsToFetch = chineseChars.filter(char =>
+        !dictionaryData[char] &&
         !persistentEncodingCache[char] &&
         !(typeof encodingData !== 'undefined' && encodingData[char])
     );
@@ -199,6 +255,14 @@ async function fetchNewsFromRSS(mode) {
 
 // 檢查並載入今日新聞
 async function loadTodayNews() {
+    // 如果是 file:// 協議，直接使用備用句子（避免 fetch 卡住）
+    if (window.location.protocol === 'file:') {
+        console.log('Running locally (file://), using fallback sentences');
+        newsData.zh = FALLBACK_SENTENCES.zh;
+        newsData.en = FALLBACK_SENTENCES.en;
+        return true;
+    }
+
     const today = getTodayString();
     const savedDate = loadFromStorage(STORAGE_KEYS.NEWS_DATE);
 
@@ -266,6 +330,10 @@ async function bootstrap() {
 
     // 載入編碼快取
     loadEncodingCache();
+
+    // 載入 dictionary.json（完整字典，包含倉頡、無蝦米等）
+    updateLoadingStatus('載入字典資料...');
+    await loadDictionary();
 
     // 載入今日新聞
     const hadCache = await loadTodayNews();

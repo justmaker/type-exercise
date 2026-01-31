@@ -12,6 +12,7 @@
 | 注音 | chinese-opendesktop/cin-tables | `bopomofo.cin` | Open Government Data License |
 | 無蝦米 | fcitx/fcitx5-table-extra | `boshiamy.txt` | LGPL-2.1 |
 | 拼音 | pypinyin (Python Library) | - | MIT |
+| 每日新聞 | Google News RSS | - | - |
 
 ---
 
@@ -106,6 +107,27 @@
 - MIT License
 
 ---
+ 
+ ### 5. 練習文本：每日新聞 (Daily News)
+ 
+ **來源**: Google News RSS
+ 
+ ```
+ 中文版: https://news.google.com/rss?hl=zh-TW&gl=TW&ceid=TW:zh-Hant
+ 英文版: https://news.google.com/rss?hl=en&gl=US&ceid=US:en
+ ```
+ 
+ **抓取與處理邏輯**:
+ - 使用 `feedparser` 抓取 RSS 標題。
+ - 使用 `BeautifulSoup` 去除 HTML 標籤。
+ - **標點符號標準化**: 為方便打字，所有半形標點（`, . ? ! : ;`）會自動轉換為全形（`， 。 ？ ！ ： ；`）。
+ - **過濾**: 只保留長度大於 15 個字元的標題，確保練習品質。
+ 
+ **快取機制**:
+ - 生成的 JSON 會儲存在 `daily_news.json` 供前端讀取。
+ - 前端會將內容儲存於 `localStorage` 並檢查日期，每日更新一次。
+ 
+ ---
 
 ## 資料處理規則
 

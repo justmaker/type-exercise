@@ -88,19 +88,21 @@ let newsData = {
 let persistentEncodingCache = {};
 
 // DOM 元素
-const loadingOverlay = document.getElementById('loading-overlay');
-const loadingStatus = document.getElementById('loading-status');
-const textDisplay = document.getElementById('text-display');
-const inputArea = document.getElementById('input-area');
-const resultsDiv = document.getElementById('results');
-const wpmSpan = document.getElementById('wpm');
-const accuracySpan = document.getElementById('accuracy');
-const restartBtn = document.getElementById('restart-btn');
-const modeEnBtn = document.getElementById('mode-en');
-const modeZhBtn = document.getElementById('mode-zh');
-const achievementDiv = document.getElementById('achievement');
-const leaderboardList = document.getElementById('leaderboard-list');
-const newsCountSpan = document.getElementById('news-count');
+// DOM 元素 (將在 bootstrap 中初始化)
+let loadingOverlay = null;
+let loadingStatus = null;
+let textDisplay = null;
+let inputArea = null;
+let resultsDiv = null;
+let wpmSpan = null;
+let accuracySpan = null;
+let restartBtn = null;
+let modeEnBtn = null;
+let modeZhBtn = null;
+let achievementDiv = null;
+let leaderboardList = null;
+let newsCountSpan = null;
+let scoreSpan = null;
 
 // 編碼提示元素
 const encodingHint = document.getElementById('encoding-hint');
@@ -165,12 +167,12 @@ function getCachedEncoding(char) {
     return null;
 }
 
-// 預先查詢單一字元編碼並快取
-async function prefetchEncodingForChar(char) {
+// 即時查詢單一字元編碼並快取
+async function fetchEncodingForChar(char) {
     // 已有資料就跳過（優先檢查 dictionary.json）
-    if (dictionaryData[char] || persistentEncodingCache[char] || (typeof encodingData !== 'undefined' && encodingData[char])) {
-        return;
-    }
+    if (dictionaryData[char]) return dictionaryData[char];
+    if (persistentEncodingCache[char]) return persistentEncodingCache[char];
+    if (typeof encodingData !== 'undefined' && encodingData[char]) return encodingData[char];
 
     try {
         const response = await fetch(`https://www.moedict.tw/uni/${char}.json`);
@@ -179,14 +181,17 @@ async function prefetchEncodingForChar(char) {
             const encoding = {
                 zhuyin: data.heteronyms?.[0]?.bopomofo || '無資料',
                 pinyin: data.heteronyms?.[0]?.pinyin || '無資料',
-                cangjie: '無資料',
-                boshiamy: '無資料'
+                cangjie: '無資料', // 萌典 API 不含倉頡
+                boshiamy: '無資料'  // 萌典 API 不含嘸蝦米
             };
             persistentEncodingCache[char] = encoding;
+            saveEncodingCache(); // 儲存快取
+            return encoding;
         }
     } catch (error) {
         console.error(`編碼查詢失敗 (${char}):`, error);
     }
+    return null;
 }
 
 // 預先查詢所有中文字元的編碼
@@ -282,7 +287,7 @@ async function loadTodayNews() {
     }
 
     // 優先嘗試載入 Python 後端生成的 daily_news.json
-    updateLoadingStatus('載入每日新聞...');
+    updateLoadingStatus('載入每日新聞 (連接伺服器中)...');
     try {
         // 加入時間戳記避免快取
         const response = await fetch(`daily_news.json?t=${Date.now()}`);
@@ -308,10 +313,10 @@ async function loadTodayNews() {
     }
 
     // 如果 daily_news.json 不存在或過期，嘗試從 RSS 抓取
-    updateLoadingStatus('載入中文新聞...');
+    updateLoadingStatus('載入中文新聞 (從 RSS 來源)...');
     const zhNews = await fetchNewsFromRSS('zh');
 
-    updateLoadingStatus('載入英文新聞...');
+    updateLoadingStatus('載入英文新聞 (從 RSS 來源)...');
     const enNews = await fetchNewsFromRSS('en');
 
     // 如果抓取失敗，使用備用文章
@@ -347,23 +352,38 @@ function hideLoadingOverlay() {
 // ===== 應用程式啟動 =====
 
 async function bootstrap() {
-    updateLoadingStatus('檢查快取資料...');
+    // 1. 初始化 DOM 元素 (確保一定抓得到)
+    loadingOverlay = document.getElementById('loading-overlay');
+    loadingStatus = document.getElementById('loading-status');
+    textDisplay = document.getElementById('text-display');
+    inputArea = document.getElementById('input-area');
+    resultsDiv = document.getElementById('results');
+    wpmSpan = document.getElementById('wpm');
+    accuracySpan = document.getElementById('accuracy');
+    restartBtn = document.getElementById('restart-btn');
+    modeEnBtn = document.getElementById('mode-en');
+    modeZhBtn = document.getElementById('mode-zh');
+    achievementDiv = document.getElementById('achievement');
+    leaderboardList = document.getElementById('leaderboard-list');
+    newsCountSpan = document.getElementById('news-count');
+    scoreSpan = document.getElementById('score');
 
-    // 載入編碼快取
+    // 重新綁定事件 (因為按鈕元素是新抓的)
+    if (modeEnBtn) modeEnBtn.onclick = () => switchMode('en');
+    if (modeZhBtn) modeZhBtn.onclick = () => switchMode('zh');
+    if (restartBtn) restartBtn.onclick = startGame;
+
+    // 載入編碼快取（同步操作，很快）
     loadEncodingCache();
 
-    // 載入 dictionary.json（完整字典，包含倉頡、無蝦米等）
-    updateLoadingStatus('載入字典資料...');
-    await loadDictionary();
+    // 啟動背景載入字典（不需等待）
+    loadDictionary().then(() => {
+        console.log('Dictionary loaded in background.');
+    });
 
-    // 載入今日新聞
-    const hadCache = await loadTodayNews();
-
-    if (!hadCache) {
-        // 預先查詢所有編碼
-        updateLoadingStatus('預先載入編碼資料...');
-        await prefetchAllEncodings([...newsData.zh, ...newsData.en]);
-    }
+    // 載入今日新聞（這通常很快，因為是讀取靜態 JSON）
+    updateLoadingStatus('準備新聞資料 (解析中)...');
+    await loadTodayNews();
 
     // 更新新聞數量顯示
     if (newsCountSpan) {
@@ -453,31 +473,52 @@ function updateDisplay(inputText) {
     errorCount = newErrorCount;
 }
 
-function calculateWPM(charactersTyped, elapsedTimeMs) {
+function calculateWPM(correctChars, elapsedTimeMs) {
     const minutes = elapsedTimeMs / 60000;
     if (minutes === 0) return 0;
-    return Math.round((charactersTyped / 5) / minutes);
+
+    if (currentMode === 'zh') {
+        // 中文 WPM: 正確字數 / 分鐘
+        return Math.round(correctChars / minutes);
+    } else {
+        // 英文 WPM: (正確字數 / 5) / 分鐘
+        return Math.round((correctChars / 5) / minutes);
+    }
 }
 
-function calculateAccuracy(totalChars, errors) {
-    if (totalChars === 0) return 100;
-    const correctChars = totalChars - errors;
-    return Math.round((correctChars / totalChars) * 100);
+function calculateAccuracy(totalPassageLength, correctChars) {
+    if (totalPassageLength === 0) return 100;
+    // 以全句為基準，沒打的字就是錯的
+    return Math.round((correctChars / totalPassageLength) * 100);
 }
 
 function completeTest() {
     isTestComplete = true;
     const endTime = Date.now();
-    const elapsedTime = endTime - startTime;
 
-    const wpm = calculateWPM(currentPassage.length, elapsedTime);
-    const accuracy = calculateAccuracy(currentPassage.length, errorCount);
+    // 防止未開始就結束導致的 elapsedTime 異常
+    const elapsedTime = startTime ? (endTime - startTime) : 0;
+
+    // 計算真正打對的字數（逐字比對最後的輸入結果）
+    const inputText = inputArea.value;
+    let correctChars = 0;
+    for (let i = 0; i < Math.min(inputText.length, currentPassage.length); i++) {
+        if (inputText[i] === currentPassage[i]) {
+            correctChars++;
+        }
+    }
+
+    // 使用新的邏輯計算成績
+    const wpm = calculateWPM(correctChars, elapsedTime);
+    const accuracy = calculateAccuracy(currentPassage.length, correctChars);
+    const score = wpm * accuracy;
 
     wpmSpan.textContent = wpm;
     accuracySpan.textContent = accuracy;
+    if (scoreSpan) scoreSpan.textContent = score;
 
     // 更新排行榜並檢查成就
-    const result = updateLeaderboard(wpm, accuracy);
+    const result = updateLeaderboard(wpm, accuracy, score);
     showAchievement(result);
     renderLeaderboard(result.currentRank);
 
@@ -494,29 +535,38 @@ function getLeaderboardKey() {
 }
 
 function getLeaderboard() {
-    const data = loadFromStorage(getLeaderboardKey());
-    return data || [];
+    let data = loadFromStorage(getLeaderboardKey());
+    if (!data) return [];
+
+    // 補全舊紀錄的分數，確保排序一致
+    return data.map(entry => {
+        if (entry.score === undefined) {
+            entry.score = entry.wpm * entry.accuracy;
+        }
+        return entry;
+    });
 }
 
 function saveLeaderboard(leaderboard) {
     saveToStorage(getLeaderboardKey(), leaderboard);
 }
 
-function updateLeaderboard(wpm, accuracy) {
+function updateLeaderboard(wpm, accuracy, score) {
     const leaderboard = getLeaderboard();
     const now = new Date();
     const timestamp = now.toLocaleString('zh-TW');
 
-    const newEntry = { wpm, accuracy, timestamp };
+    const newEntry = { wpm, accuracy, score, timestamp };
 
-    // 檢查是否破紀錄（新的最高 WPM）
-    const isNewRecord = leaderboard.length === 0 || wpm > leaderboard[0].wpm;
+    // 檢查是否破紀錄（新的最高分數）
+    // 由於 getLeaderboard 已補全 score，這裡可以直接比較
+    const isNewRecord = leaderboard.length === 0 || score > leaderboard[0].score;
 
     // 加入新紀錄
     leaderboard.push(newEntry);
 
-    // 按 WPM 排序（高到低）
-    leaderboard.sort((a, b) => b.wpm - a.wpm);
+    // 按分數排序（高到低）
+    leaderboard.sort((a, b) => b.score - a.score);
 
     // 找到當前成績的排名
     const currentRank = leaderboard.findIndex(e => e === newEntry) + 1;
@@ -536,7 +586,7 @@ function showAchievement(result) {
     achievementDiv.classList.remove('hidden');
 
     if (result.isNewRecord) {
-        achievementDiv.innerHTML = '🎉 <strong>新紀錄！</strong> 你創造了新的最高 WPM！';
+        achievementDiv.innerHTML = '🎉 <strong>新紀錄！</strong> 你創造了新的最高分數！';
         achievementDiv.className = 'achievement new-record';
     } else if (result.isTopFive) {
         achievementDiv.innerHTML = `🏅 <strong>進入前五名！</strong> 目前排名第 ${result.currentRank} 名`;
@@ -561,7 +611,8 @@ function renderLeaderboard(currentRank) {
         const medal = rank === 1 ? '🥇' : rank === 2 ? '🥈' : rank === 3 ? '🥉' : '';
 
         return `<li class="${isCurrentResult ? 'current' : ''}">
-            ${medal} <strong>${entry.wpm}</strong> WPM (${entry.accuracy}%) 
+            ${medal} <strong>${entry.score || (entry.wpm * entry.accuracy)}</strong> 分 
+            <span class="detail">(${entry.wpm} WPM / ${entry.accuracy}%)</span>
             <span class="timestamp">${entry.timestamp}</span>
             ${isCurrentResult ? '<span class="current-badge">← 本次</span>' : ''}
         </li>`;
@@ -578,12 +629,13 @@ function getCurrentChar() {
     return null;
 }
 
-function showEncodingHint() {
-    const char = getCurrentChar();
-    if (!char) {
-        hideEncodingHint();
-        return;
-    }
+async function showEncodingHint() {
+    const inputText = inputArea.value;
+    const currentIndex = inputText.length;
+
+    if (currentIndex >= currentPassage.length) return;
+
+    const char = currentPassage[currentIndex];
 
     // 檢查是否為中文字元
     if (!isChinese(char)) {
@@ -596,10 +648,20 @@ function showEncodingHint() {
         return;
     }
 
-    // 取得編碼資料（同步，從快取）
-    const encoding = getCachedEncoding(char);
-
     hintChar.textContent = char;
+
+    // 先顯示查詢中狀態
+    hintZhuyin.textContent = '查詢中...';
+    hintCangjie.textContent = '查詢中...';
+    hintBoshiamy.textContent = '查詢中...';
+    hintPinyin.textContent = '查詢中...';
+    encodingHint.classList.remove('hidden');
+
+    // 取得編碼資料（支援非同步）
+    // 如果字典還在載入中，這裡會等到 fetchEncodingForChar 檢查到 dictionaryData 有值，
+    // 或者直接去線上查（視 fetchEncodingForChar 實作而定）。
+    // 為了確保字典優先，我們可以在這裡做個簡單判斷或直接呼叫。
+    const encoding = await fetchEncodingForChar(char);
 
     if (encoding) {
         hintZhuyin.textContent = encoding.zhuyin || '無資料';
@@ -607,13 +669,11 @@ function showEncodingHint() {
         hintBoshiamy.textContent = encoding.boshiamy || '無資料';
         hintPinyin.textContent = encoding.pinyin || '無資料';
     } else {
-        hintZhuyin.textContent = '無資料';
-        hintCangjie.textContent = '無資料';
-        hintBoshiamy.textContent = '無資料';
-        hintPinyin.textContent = '無資料';
+        hintZhuyin.textContent = '查無資料';
+        hintCangjie.textContent = '查無資料';
+        hintBoshiamy.textContent = '查無資料';
+        hintPinyin.textContent = '查無資料';
     }
-
-    encodingHint.classList.remove('hidden');
 }
 
 function hideEncodingHint() {
@@ -702,9 +762,15 @@ document.addEventListener('keydown', (e) => {
     }
 }, true);
 
-modeEnBtn.addEventListener('click', () => switchMode('en'));
-modeZhBtn.addEventListener('click', () => switchMode('zh'));
-restartBtn.addEventListener('click', startGame);
+// 舊的事件綁定已移除，改在 bootstrap 內執行
 
-// 啟動應用程式
-bootstrap();
+
+// 啟動應用程式 (等待 DOM 載入完成)
+document.addEventListener('DOMContentLoaded', () => {
+    // 重新抓取一次 DOM 元素以防萬一
+    const statusEl = document.getElementById('loading-status');
+    if (statusEl) console.log('Loading status element found');
+    else console.error('Loading status element NOT found!');
+
+    bootstrap();
+});

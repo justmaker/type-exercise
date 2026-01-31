@@ -21,7 +21,7 @@ const STORAGE_KEYS = {
 };
 // 字典資料 (從 dictionary-data.js 預載入，或從 dictionary.json 動態載入)
 // 格式: { char: { zhuyin, cangjie, boshiamy, pinyin } }
-// 注意: 如果 dictionary-data.js 已載入，dictionaryData 會被覆蓋
+// 注意: dictionary-data.js 使用 var 宣告，所以這裡可以安全地條件式宣告
 if (typeof dictionaryData === 'undefined') {
     var dictionaryData = {};
 }
@@ -55,6 +55,8 @@ async function loadDictionary() {
 
 // 當前模式 ('zh' 或 'en')
 let currentMode = 'zh';
+// 內容模式 ('sentence' 或 'article')
+let contentMode = 'sentence';
 let currentPassage = '';
 let startTime = null;
 let errorCount = 0;
@@ -84,6 +86,24 @@ let newsData = {
     en: []
 };
 
+// 文章資料（完整新聞內文）
+let articleData = {
+    zh: [],
+    en: []
+};
+
+// 備用文章
+const FALLBACK_ARTICLES = {
+    zh: [{
+        title: '人工智慧的發展與未來',
+        content: '人工智慧技術近年來取得了突破性的進展。從語音辨識到自然語言處理，從電腦視覺到自動駕駛，AI正在改變我們生活的方方面面。專家預測，未來十年內，人工智慧將會更深入地融入我們的日常生活，帶來更多便利的同時，也將帶來新的挑戰和機遇。隨著技術的不斷發展，我們需要思考如何在享受科技便利的同時，確保人工智慧的發展能夠造福全人類。'
+    }],
+    en: [{
+        title: 'The Future of Artificial Intelligence',
+        content: 'Artificial intelligence has made remarkable progress in recent years. From speech recognition to natural language processing, from computer vision to autonomous driving, AI is transforming every aspect of our lives. Experts predict that in the next decade, artificial intelligence will become even more integrated into our daily routines, bringing both new conveniences and challenges. As technology continues to evolve, we need to consider how to ensure that AI development benefits all of humanity while enjoying its conveniences.'
+    }]
+};
+
 // 編碼快取（持久化）
 let persistentEncodingCache = {};
 
@@ -99,6 +119,8 @@ let accuracySpan = null;
 let restartBtn = null;
 let modeEnBtn = null;
 let modeZhBtn = null;
+let modeSentenceBtn = null;
+let modeArticleBtn = null;
 let achievementDiv = null;
 let leaderboardList = null;
 let newsCountSpan = null;
@@ -259,14 +281,32 @@ async function fetchNewsFromRSS(mode) {
     }
 }
 
-// 檢查並載入今日新聞
-async function loadTodayNews() {
-    // 如果是 file:// 協議，直接使用備用句子（避免 fetch 卡住）
+// 更新新聞數量顯示
+function updateNewsCount() {
+    if (newsCountSpan) {
+        if (contentMode === 'article') {
+            newsCountSpan.textContent = articleData[currentMode].length;
+        } else {
+            newsCountSpan.textContent = newsData[currentMode].length;
+        }
+    }
+}
+
+// 初始化新聞（先用備用句子，讓用戶可以立即開始）
+function initNewsWithFallback() {
+    newsData.zh = [...FALLBACK_SENTENCES.zh];
+    newsData.en = [...FALLBACK_SENTENCES.en];
+    articleData.zh = [...FALLBACK_ARTICLES.zh];
+    articleData.en = [...FALLBACK_ARTICLES.en];
+    console.log('Initialized with fallback sentences (5 each) and articles (1 each)');
+}
+
+// 背景載入今日新聞
+async function loadTodayNewsInBackground() {
+    // file:// 協議下無法 fetch，跳過背景載入
     if (window.location.protocol === 'file:') {
-        console.log('Running locally (file://), using fallback sentences');
-        newsData.zh = FALLBACK_SENTENCES.zh;
-        newsData.en = FALLBACK_SENTENCES.en;
-        return true;
+        console.log('Running locally (file://), skipping background news fetch');
+        return;
     }
 
     const today = getTodayString();
@@ -277,59 +317,73 @@ async function loadTodayNews() {
         const savedZh = loadFromStorage(STORAGE_KEYS.NEWS_ZH);
         const savedEn = loadFromStorage(STORAGE_KEYS.NEWS_EN);
 
-        // 如果快取內容存在且數量足夠（避免舊的 5 條快取干擾）
         if (savedZh && savedZh.length >= 10 && savedEn && savedEn.length >= 10) {
             newsData.zh = savedZh;
             newsData.en = savedEn;
-            console.log('Loaded news from localStorage cache');
-            return true;
+            updateNewsCount();
+            console.log(`Loaded ${newsData.zh.length} zh + ${newsData.en.length} en news from localStorage cache`);
+            return;
         }
     }
 
-    // 優先嘗試載入 Python 後端生成的 daily_news.json
-    updateLoadingStatus('載入每日新聞 (連接伺服器中)...');
+    // 嘗試載入 daily_news.json
     try {
-        // 加入時間戳記避免快取
         const response = await fetch(`daily_news.json?t=${Date.now()}`);
         if (response.ok) {
             const data = await response.json();
 
-            // 檢查日期是否為今天
             if (data.date === today && data.zh && data.en) {
                 newsData.zh = data.zh;
                 newsData.en = data.en;
+
+                // 載入文章資料
+                if (data.articles_zh && data.articles_zh.length > 0) {
+                    articleData.zh = data.articles_zh;
+                }
+                if (data.articles_en && data.articles_en.length > 0) {
+                    articleData.en = data.articles_en;
+                }
+
+                updateNewsCount();
 
                 // 儲存到 localStorage
                 saveToStorage(STORAGE_KEYS.NEWS_DATE, today);
                 saveToStorage(STORAGE_KEYS.NEWS_ZH, newsData.zh);
                 saveToStorage(STORAGE_KEYS.NEWS_EN, newsData.en);
 
-                console.log('Loaded news from daily_news.json (Python backend)');
-                return false;
+                console.log(`Loaded ${newsData.zh.length} zh + ${newsData.en.length} en titles, ${articleData.zh.length} zh + ${articleData.en.length} en articles from daily_news.json`);
+                return;
             }
         }
     } catch (error) {
-        console.warn('Failed to load daily_news.json, falling back to RSS:', error.message);
+        console.warn('Failed to load daily_news.json:', error.message);
     }
 
     // 如果 daily_news.json 不存在或過期，嘗試從 RSS 抓取
-    updateLoadingStatus('載入中文新聞 (從 RSS 來源)...');
-    const zhNews = await fetchNewsFromRSS('zh');
+    console.log('Fetching news from RSS in background...');
+    try {
+        const [zhNews, enNews] = await Promise.all([
+            fetchNewsFromRSS('zh'),
+            fetchNewsFromRSS('en')
+        ]);
 
-    updateLoadingStatus('載入英文新聞 (從 RSS 來源)...');
-    const enNews = await fetchNewsFromRSS('en');
+        if (zhNews.length > 0) {
+            newsData.zh = zhNews;
+        }
+        if (enNews.length > 0) {
+            newsData.en = enNews;
+        }
+        updateNewsCount();
 
-    // 如果抓取失敗，使用備用文章
-    newsData.zh = zhNews.length > 0 ? zhNews : FALLBACK_SENTENCES.zh;
-    newsData.en = enNews.length > 0 ? enNews : FALLBACK_SENTENCES.en;
+        // 儲存到 localStorage
+        saveToStorage(STORAGE_KEYS.NEWS_DATE, today);
+        saveToStorage(STORAGE_KEYS.NEWS_ZH, newsData.zh);
+        saveToStorage(STORAGE_KEYS.NEWS_EN, newsData.en);
 
-    // 儲存到 localStorage
-    saveToStorage(STORAGE_KEYS.NEWS_DATE, today);
-    saveToStorage(STORAGE_KEYS.NEWS_ZH, newsData.zh);
-    saveToStorage(STORAGE_KEYS.NEWS_EN, newsData.en);
-
-    console.log('Loaded news from RSS feeds');
-    return false;
+        console.log(`Loaded ${newsData.zh.length} zh + ${newsData.en.length} en news from RSS`);
+    } catch (error) {
+        console.warn('Failed to fetch RSS:', error.message);
+    }
 }
 
 // ===== 載入畫面控制 =====
@@ -352,9 +406,12 @@ function hideLoadingOverlay() {
 // ===== 應用程式啟動 =====
 
 async function bootstrap() {
-    // 1. 初始化 DOM 元素 (確保一定抓得到)
+    // 1. 先初始化載入畫面元素（最優先）
     loadingOverlay = document.getElementById('loading-overlay');
     loadingStatus = document.getElementById('loading-status');
+
+    // 2. 初始化其他 DOM 元素
+    updateLoadingStatus('初始化介面元素...');
     textDisplay = document.getElementById('text-display');
     inputArea = document.getElementById('input-area');
     resultsDiv = document.getElementById('results');
@@ -363,62 +420,85 @@ async function bootstrap() {
     restartBtn = document.getElementById('restart-btn');
     modeEnBtn = document.getElementById('mode-en');
     modeZhBtn = document.getElementById('mode-zh');
+    modeSentenceBtn = document.getElementById('mode-sentence');
+    modeArticleBtn = document.getElementById('mode-article');
     achievementDiv = document.getElementById('achievement');
     leaderboardList = document.getElementById('leaderboard-list');
     newsCountSpan = document.getElementById('news-count');
     scoreSpan = document.getElementById('score');
 
-    // 重新綁定事件 (因為按鈕元素是新抓的)
+    // 3. 綁定事件處理器
+    updateLoadingStatus('綁定事件處理器...');
     if (modeEnBtn) modeEnBtn.onclick = () => switchMode('en');
     if (modeZhBtn) modeZhBtn.onclick = () => switchMode('zh');
+    if (modeSentenceBtn) modeSentenceBtn.onclick = () => switchContentMode('sentence');
+    if (modeArticleBtn) modeArticleBtn.onclick = () => switchContentMode('article');
     if (restartBtn) restartBtn.onclick = startGame;
+    setupEventListeners();
 
-    // 載入編碼快取（同步操作，很快）
+    // 4. 載入編碼快取
+    updateLoadingStatus('載入編碼快取...');
     loadEncodingCache();
 
-    // 啟動背景載入字典（不需等待）
-    loadDictionary().then(() => {
-        console.log('Dictionary loaded in background.');
-    });
+    // 5. 載入字典資料
+    updateLoadingStatus('載入字典資料...');
+    await loadDictionary();
+    console.log('Dictionary loaded.');
 
-    // 載入今日新聞（這通常很快，因為是讀取靜態 JSON）
-    updateLoadingStatus('準備新聞資料 (解析中)...');
-    await loadTodayNews();
+    // 6. 先用備用句子初始化（讓用戶可以立即開始）
+    updateLoadingStatus('準備題庫...');
+    initNewsWithFallback();
+    updateNewsCount();
 
-    // 更新新聞數量顯示
-    if (newsCountSpan) {
-        newsCountSpan.textContent = newsData[currentMode].length;
-    }
+    // 7. 完成初始化
+    updateLoadingStatus('初始化完成！');
 
-    // 隱藏載入畫面
-    hideLoadingOverlay();
+    // 隱藏載入畫面並開始遊戲
+    setTimeout(() => {
+        hideLoadingOverlay();
+        startGame();
+    }, 200);
 
-    // 開始遊戲
-    startGame();
+    // 8. 背景載入今日新聞（不阻塞）
+    loadTodayNewsInBackground();
 }
 
 // ===== 遊戲邏輯 =====
 
 function getRandomPassage() {
-    const passages = newsData[currentMode];
-    if (!passages || passages.length === 0) {
-        console.warn('No news data available for mode:', currentMode);
+    // 根據內容模式選擇資料來源
+    let dataSource;
+    if (contentMode === 'article') {
+        dataSource = articleData[currentMode];
+    } else {
+        dataSource = newsData[currentMode];
+    }
+
+    if (!dataSource || dataSource.length === 0) {
+        console.warn(`No ${contentMode} data available for mode:`, currentMode);
         return '';
     }
 
-    if (passages.length === 1) return passages[0];
+    if (dataSource.length === 1) {
+        const item = dataSource[0];
+        // 文章模式返回 content，句子模式返回字串本身
+        return contentMode === 'article' ? item.content : item;
+    }
 
     let newIndex;
     let attempts = 0;
     const oldPassage = currentPassage;
 
     do {
-        newIndex = Math.floor(Math.random() * passages.length);
+        newIndex = Math.floor(Math.random() * dataSource.length);
+        const newPassage = contentMode === 'article' ? dataSource[newIndex].content : dataSource[newIndex];
+        if (newPassage !== oldPassage || attempts >= 20) break;
         attempts++;
-    } while (passages[newIndex] === oldPassage && attempts < 20);
+    } while (true);
 
-    console.log(`Picked news index ${newIndex} of ${passages.length}`);
-    return passages[newIndex];
+    console.log(`Picked ${contentMode} index ${newIndex} of ${dataSource.length}`);
+    const item = dataSource[newIndex];
+    return contentMode === 'article' ? item.content : item;
 }
 
 function startGame() {
@@ -428,9 +508,7 @@ function startGame() {
     isTestComplete = false;
 
     // 更新新聞數量顯示
-    if (newsCountSpan) {
-        newsCountSpan.textContent = newsData[currentMode].length;
-    }
+    updateNewsCount();
 
     renderPassage();
 
@@ -696,71 +774,92 @@ function switchMode(mode) {
     startGame();
 }
 
-// ===== 事件監聽 =====
+function switchContentMode(mode) {
+    contentMode = mode;
 
-inputArea.addEventListener('input', (e) => {
-    if (isTestComplete) return;
-
-    const inputText = e.target.value;
-
-    if (startTime === null && inputText.length > 0) {
-        startTime = Date.now();
+    if (mode === 'sentence') {
+        modeSentenceBtn.classList.add('active');
+        modeArticleBtn.classList.remove('active');
+        textDisplay.classList.remove('article-mode');
+        inputArea.classList.remove('article-mode');
+    } else {
+        modeArticleBtn.classList.add('active');
+        modeSentenceBtn.classList.remove('active');
+        textDisplay.classList.add('article-mode');
+        inputArea.classList.add('article-mode');
     }
 
-    updateDisplay(inputText);
-    hideEncodingHint();
-});
+    updateNewsCount();
+    startGame();
+}
 
-document.addEventListener('keydown', (e) => {
-    // 只有在 focus 在輸入框或測試已完成時才攔截按鍵
-    const isInputActive = document.activeElement === inputArea;
+// ===== 事件監聯 =====
 
-    if (e.key === 'Tab') {
-        if (isInputActive && !isTestComplete) {
-            e.preventDefault();
-            showEncodingHint();
-        }
-    }
+function setupEventListeners() {
+    inputArea.addEventListener('input', (e) => {
+        if (isTestComplete) return;
 
-    if (e.key === 'Escape') {
-        if (isInputActive && !isTestComplete && startTime !== null) {
-            completeTest();
-        }
-    }
+        const inputText = e.target.value;
 
-    if (e.key === 'Enter') {
-        // 如果測試已完成，按 Enter 重新開始
-        if (isTestComplete) {
-            e.preventDefault();
-            e.stopPropagation();
-            console.log('Restarting game via Enter');
-            startGame();
-            return;
+        if (startTime === null && inputText.length > 0) {
+            startTime = Date.now();
         }
 
-        // 如果測試進行中且已輸入完成（最後一字正確），按 Enter 結束
-        if (!isTestComplete && inputArea.value.length >= currentPassage.length) {
-            const inputText = inputArea.value;
-            const targetLen = currentPassage.length;
-            if (inputText[targetLen - 1] === currentPassage[targetLen - 1]) {
+        updateDisplay(inputText);
+        hideEncodingHint();
+    });
+
+    document.addEventListener('keydown', (e) => {
+        // 只有在 focus 在輸入框或測試已完成時才攔截按鍵
+        const isInputActive = document.activeElement === inputArea;
+
+        if (e.key === 'Tab') {
+            if (isInputActive && !isTestComplete) {
                 e.preventDefault();
-                e.stopPropagation();
-                completeTest();
-                return;
+                showEncodingHint();
             }
         }
-    }
 
-    if (e.key === ' ') {
-        // 如果測試已完成，按空白鍵重新開始
-        if (isTestComplete) {
-            e.preventDefault();
-            e.stopPropagation();
-            console.log('Restarting game via Space');
-            startGame();
+        if (e.key === 'Escape') {
+            if (isInputActive && !isTestComplete && startTime !== null) {
+                completeTest();
+            }
         }
-    }
-}, true);
+
+        if (e.key === 'Enter') {
+            // 如果測試已完成，按 Enter 重新開始
+            if (isTestComplete) {
+                e.preventDefault();
+                e.stopPropagation();
+                console.log('Restarting game via Enter');
+                startGame();
+                return;
+            }
+
+            // 如果測試進行中且已輸入完成（最後一字正確），按 Enter 結束
+            if (!isTestComplete && inputArea.value.length >= currentPassage.length) {
+                const inputText = inputArea.value;
+                const targetLen = currentPassage.length;
+                if (inputText[targetLen - 1] === currentPassage[targetLen - 1]) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    completeTest();
+                    return;
+                }
+            }
+        }
+
+        if (e.key === ' ') {
+            // 如果測試已完成，按空白鍵重新開始
+            if (isTestComplete) {
+                e.preventDefault();
+                e.stopPropagation();
+                console.log('Restarting game via Space');
+                startGame();
+            }
+        }
+    }, true);
+}
 
 // 舊的事件綁定已移除，改在 bootstrap 內執行
 

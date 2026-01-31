@@ -29,7 +29,12 @@
 
         <textarea id="input-area" placeholder="開始輸入..." autofocus></textarea>
 
-        <p class="hint">💡 按 <kbd>Tab</kbd> 查看當前字的編碼提示</p>
+        <p class="hint">
+            💡 按 <kbd>Tab</kbd> 編碼提示 |
+            按 <kbd>Esc</kbd> 結束測試 |
+            打完按 <kbd>Enter</kbd> 送出 |
+            題庫: <span id="news-count">0</span> 篇
+        </p>
 
         <div id="results" class="hidden">
             <h2>結果</h2>
@@ -43,7 +48,7 @@
             </div>
         </div>
 
-        <button id="restart-btn" class="hidden">再試一次 (空白鍵)</button>
+        <button id="restart-btn" class="hidden">再試一次 (Enter)</button>
     </div>
 
     <div id="encoding-hint" class="hidden">
@@ -71,7 +76,7 @@
 
     <script src="encoding-data.js"></script>
     <script src="dictionary-data.js"></script>
-    <script src="script.js"></script>
+    <script src="script.js?v=2.0"></script>
 </body>
 
 </html>

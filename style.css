@@ -49,7 +49,9 @@ body {
 }
 
 @keyframes spin {
-    to { transform: rotate(360deg); }
+    to {
+        transform: rotate(360deg);
+    }
 }
 
 #loading-status {
@@ -290,8 +292,15 @@ h1 {
 }
 
 @keyframes pulse {
-    0%, 100% { transform: scale(1); }
-    50% { transform: scale(1.02); }
+
+    0%,
+    100% {
+        transform: scale(1);
+    }
+
+    50% {
+        transform: scale(1.02);
+    }
 }
 
 /* 排行榜 */
@@ -344,6 +353,12 @@ h1 {
 
 #leaderboard-list li.current .timestamp {
     color: #0f0f23;
+}
+
+#leaderboard-list .detail {
+    font-size: 0.8rem;
+    opacity: 0.7;
+    margin-left: 0.25rem;
 }
 
 #leaderboard-list .current-badge {

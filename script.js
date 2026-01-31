@@ -8,7 +8,7 @@ const RSS_URLS = {
 const CORS_PROXY = 'https://api.allorigins.win/raw?url=';
 
 // 每種語言抓取的新聞數量
-const NEWS_COUNT = 3;
+const NEWS_COUNT = 20;
 
 // localStorage keys
 const STORAGE_KEYS = {
@@ -100,6 +100,7 @@ const modeEnBtn = document.getElementById('mode-en');
 const modeZhBtn = document.getElementById('mode-zh');
 const achievementDiv = document.getElementById('achievement');
 const leaderboardList = document.getElementById('leaderboard-list');
+const newsCountSpan = document.getElementById('news-count');
 
 // 編碼提示元素
 const encodingHint = document.getElementById('encoding-hint');
@@ -271,7 +272,8 @@ async function loadTodayNews() {
         const savedZh = loadFromStorage(STORAGE_KEYS.NEWS_ZH);
         const savedEn = loadFromStorage(STORAGE_KEYS.NEWS_EN);
 
-        if (savedZh && savedZh.length > 0 && savedEn && savedEn.length > 0) {
+        // 如果快取內容存在且數量足夠（避免舊的 5 條快取干擾）
+        if (savedZh && savedZh.length >= 10 && savedEn && savedEn.length >= 10) {
             newsData.zh = savedZh;
             newsData.en = savedEn;
             console.log('Loaded news from localStorage cache');
@@ -282,7 +284,8 @@ async function loadTodayNews() {
     // 優先嘗試載入 Python 後端生成的 daily_news.json
     updateLoadingStatus('載入每日新聞...');
     try {
-        const response = await fetch('daily_news.json');
+        // 加入時間戳記避免快取
+        const response = await fetch(`daily_news.json?t=${Date.now()}`);
         if (response.ok) {
             const data = await response.json();
 
@@ -362,7 +365,10 @@ async function bootstrap() {
         await prefetchAllEncodings([...newsData.zh, ...newsData.en]);
     }
 
-    updateLoadingStatus('準備完成！');
+    // 更新新聞數量顯示
+    if (newsCountSpan) {
+        newsCountSpan.textContent = newsData[currentMode].length;
+    }
 
     // 隱藏載入畫面
     hideLoadingOverlay();
@@ -375,7 +381,24 @@ async function bootstrap() {
 
 function getRandomPassage() {
     const passages = newsData[currentMode];
-    return passages[Math.floor(Math.random() * passages.length)];
+    if (!passages || passages.length === 0) {
+        console.warn('No news data available for mode:', currentMode);
+        return '';
+    }
+
+    if (passages.length === 1) return passages[0];
+
+    let newIndex;
+    let attempts = 0;
+    const oldPassage = currentPassage;
+
+    do {
+        newIndex = Math.floor(Math.random() * passages.length);
+        attempts++;
+    } while (passages[newIndex] === oldPassage && attempts < 20);
+
+    console.log(`Picked news index ${newIndex} of ${passages.length}`);
+    return passages[newIndex];
 }
 
 function startGame() {
@@ -383,6 +406,11 @@ function startGame() {
     startTime = null;
     errorCount = 0;
     isTestComplete = false;
+
+    // 更新新聞數量顯示
+    if (newsCountSpan) {
+        newsCountSpan.textContent = newsData[currentMode].length;
+    }
 
     renderPassage();
 
@@ -621,37 +649,58 @@ inputArea.addEventListener('input', (e) => {
 
     updateDisplay(inputText);
     hideEncodingHint();
-
-    // 當輸入長度達到且最後一個字正確時自動完成
-    if (inputText.length >= currentPassage.length) {
-        const lastIndex = currentPassage.length - 1;
-        if (inputText[lastIndex] === currentPassage[lastIndex]) {
-            completeTest();
-        }
-    }
 });
 
-inputArea.addEventListener('keydown', (e) => {
+document.addEventListener('keydown', (e) => {
+    // 只有在 focus 在輸入框或測試已完成時才攔截按鍵
+    const isInputActive = document.activeElement === inputArea;
+
     if (e.key === 'Tab') {
-        e.preventDefault();
-        if (!isTestComplete) {
+        if (isInputActive && !isTestComplete) {
+            e.preventDefault();
             showEncodingHint();
         }
     }
 
-    // 按 Esc 鍵強制結束測試
     if (e.key === 'Escape') {
-        if (!isTestComplete && startTime !== null) {
+        if (isInputActive && !isTestComplete && startTime !== null) {
             completeTest();
         }
     }
 
-    // 測試完成後按空白鍵重新開始
-    if (e.key === ' ' && isTestComplete) {
-        e.preventDefault();
-        startGame();
+    if (e.key === 'Enter') {
+        // 如果測試已完成，按 Enter 重新開始
+        if (isTestComplete) {
+            e.preventDefault();
+            e.stopPropagation();
+            console.log('Restarting game via Enter');
+            startGame();
+            return;
+        }
+
+        // 如果測試進行中且已輸入完成（最後一字正確），按 Enter 結束
+        if (!isTestComplete && inputArea.value.length >= currentPassage.length) {
+            const inputText = inputArea.value;
+            const targetLen = currentPassage.length;
+            if (inputText[targetLen - 1] === currentPassage[targetLen - 1]) {
+                e.preventDefault();
+                e.stopPropagation();
+                completeTest();
+                return;
+            }
+        }
     }
-});
+
+    if (e.key === ' ') {
+        // 如果測試已完成，按空白鍵重新開始
+        if (isTestComplete) {
+            e.preventDefault();
+            e.stopPropagation();
+            console.log('Restarting game via Space');
+            startGame();
+        }
+    }
+}, true);
 
 modeEnBtn.addEventListener('click', () => switchMode('en'));
 modeZhBtn.addEventListener('click', () => switchMode('zh'));

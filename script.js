@@ -21,6 +21,43 @@ const STORAGE_KEYS = {
     AUTO_SHOW_ENCODING: 'typing_auto_show_encoding',
     THEME: 'typing_theme'
 };
+
+// 字碼練習的字符集定義
+const CODE_CHARACTERS = {
+    english: {
+        chars: 'abcdefghijklmnopqrstuvwxyz',
+        name: '英文',
+        keyMap: null  // 直接按對應鍵，無需映射
+    },
+    zhuyin: {
+        chars: 'ㄅㄆㄇㄈㄉㄊㄋㄌㄍㄎㄏㄐㄑㄒㄓㄔㄕㄖㄗㄘㄙㄧㄨㄩㄚㄛㄜㄝㄞㄟㄠㄡㄢㄣㄤㄥㄦ',
+        name: '注音',
+        keyMap: {
+            '1': 'ㄅ', 'q': 'ㄆ', 'a': 'ㄇ', 'z': 'ㄈ',
+            '2': 'ㄉ', 'w': 'ㄊ', 's': 'ㄋ', 'x': 'ㄌ',
+            'e': 'ㄍ', 'd': 'ㄎ', 'c': 'ㄏ',
+            'r': 'ㄐ', 'f': 'ㄑ', 'v': 'ㄒ',
+            '5': 'ㄓ', 't': 'ㄔ', 'g': 'ㄕ', 'b': 'ㄖ',
+            'y': 'ㄗ', 'h': 'ㄘ', 'n': 'ㄙ',
+            'u': 'ㄧ', 'j': 'ㄨ', 'm': 'ㄩ',
+            '8': 'ㄚ', 'i': 'ㄛ', 'k': 'ㄜ', ',': 'ㄝ',
+            '9': 'ㄞ', 'o': 'ㄟ', 'l': 'ㄠ', '.': 'ㄡ',
+            '0': 'ㄢ', 'p': 'ㄣ', ';': 'ㄤ',
+            '-': 'ㄥ', '/': 'ㄦ'
+        }
+    },
+    cangjie: {
+        chars: '日月金木水火土竹戈十大中一弓人心手口尸廿山女田難卜符',
+        name: '倉頡',
+        keyMap: {
+            'a': '日', 'b': '月', 'c': '金', 'd': '木', 'e': '水',
+            'f': '火', 'g': '土', 'h': '竹', 'i': '戈', 'j': '十',
+            'k': '大', 'l': '中', 'm': '一', 'n': '弓', 'o': '人',
+            'p': '心', 'q': '手', 'r': '口', 's': '尸', 't': '廿',
+            'u': '山', 'v': '女', 'w': '田', 'x': '難', 'y': '卜', 'z': '符'
+        }
+    }
+};
 // 字典資料 (從 dictionary-data.js 預載入，或從 dictionary.json 動態載入)
 // 格式: { char: { zhuyin, cangjie, boshiamy, pinyin } }
 // 注意: dictionary-data.js 使用 var 宣告，所以這裡可以安全地條件式宣告
@@ -57,8 +94,10 @@ async function loadDictionary() {
 
 // 當前模式 ('zh' 或 'en')
 let currentMode = 'zh';
-// 內容模式 ('sentence' 或 'article')
+// 內容模式 ('sentence' | 'article' | 'code')
 let contentMode = 'sentence';
+// 字碼練習類型 ('english' | 'zhuyin' | 'cangjie')
+let codeType = 'cangjie';
 // 當前主題
 let currentTheme = 'dark';
 let currentPassage = '';
@@ -129,6 +168,7 @@ let modeEnBtn = null;
 let modeZhBtn = null;
 let modeSentenceBtn = null;
 let modeArticleBtn = null;
+let modeCodeBtn = null;
 let achievementDiv = null;
 let leaderboardList = null;
 let newsCountSpan = null;
@@ -375,7 +415,9 @@ async function fetchNewsFromRSS(mode) {
 // 更新新聞數量顯示
 function updateNewsCount() {
     if (newsCountSpan) {
-        if (contentMode === 'article') {
+        if (contentMode === 'code') {
+            newsCountSpan.textContent = '隨機生成';
+        } else if (contentMode === 'article') {
             newsCountSpan.textContent = articleData[currentMode].length;
         } else {
             newsCountSpan.textContent = newsData[currentMode].length;
@@ -513,6 +555,7 @@ async function bootstrap() {
     modeZhBtn = document.getElementById('mode-zh');
     modeSentenceBtn = document.getElementById('mode-sentence');
     modeArticleBtn = document.getElementById('mode-article');
+    modeCodeBtn = document.getElementById('mode-code');
     achievementDiv = document.getElementById('achievement');
     leaderboardList = document.getElementById('leaderboard-list');
     newsCountSpan = document.getElementById('news-count');
@@ -525,7 +568,9 @@ async function bootstrap() {
     if (modeZhBtn) modeZhBtn.onclick = () => switchMode('zh');
     if (modeSentenceBtn) modeSentenceBtn.onclick = () => switchContentMode('sentence');
     if (modeArticleBtn) modeArticleBtn.onclick = () => switchContentMode('article');
+    if (modeCodeBtn) modeCodeBtn.onclick = () => switchContentMode('code');
     if (restartBtn) restartBtn.onclick = startGame;
+    initCodeTypeControls();
     if (autoShowEncodingCheckbox) {
         autoShowEncodingCheckbox.onchange = (e) => toggleAutoShowEncoding(e.target.checked);
     }
@@ -563,7 +608,27 @@ async function bootstrap() {
 
 // ===== 遊戲邏輯 =====
 
+function generateRandomCodeSequence(length = 30) {
+    const codeSet = CODE_CHARACTERS[codeType];
+    if (!codeSet) return '';
+
+    const chars = codeSet.chars;
+    let sequence = '';
+
+    for (let i = 0; i < length; i++) {
+        const randomIndex = Math.floor(Math.random() * chars.length);
+        sequence += chars[randomIndex];
+    }
+
+    return sequence;
+}
+
 function getRandomPassage() {
+    // 字碼模式：生成隨機字碼序列
+    if (contentMode === 'code') {
+        return generateRandomCodeSequence(30);
+    }
+
     // 根據內容模式選擇資料來源
     let dataSource;
     if (contentMode === 'article') {
@@ -815,6 +880,35 @@ function getCurrentChar() {
 async function showEncodingHint() {
     const inputText = inputArea.value;
 
+    // 字碼模式特殊處理
+    if (contentMode === 'code') {
+        const currentIndex = inputText.length;
+        if (currentIndex >= currentPassage.length) return;
+
+        const code = currentPassage[currentIndex];
+        const codeSet = CODE_CHARACTERS[codeType];
+
+        hintChar.textContent = code;
+
+        if (codeSet.keyMap) {
+            // 找到對應的按鍵
+            const key = Object.keys(codeSet.keyMap).find(k => codeSet.keyMap[k] === code);
+            hintZhuyin.textContent = `按鍵: ${key || '?'}`;
+            hintCangjie.textContent = '-';
+            hintBoshiamy.textContent = '-';
+            hintPinyin.textContent = '-';
+        } else {
+            // 英文模式
+            hintZhuyin.textContent = `按鍵: ${code}`;
+            hintCangjie.textContent = '-';
+            hintBoshiamy.textContent = '-';
+            hintPinyin.textContent = '-';
+        }
+
+        encodingHint.classList.remove('hidden');
+        return;
+    }
+
     // 計算實際已正確輸入的字符數量（作為當前位置）
     let correctCount = 0;
     for (let i = 0; i < Math.min(inputText.length, currentPassage.length); i++) {
@@ -887,33 +981,171 @@ function switchMode(mode) {
         modeZhBtn.classList.remove('active');
     }
 
+    // 更新字碼類型顯示
+    updateCodeTypeVisibility();
+
+    // 如果在字碼模式，根據語言更新字碼類型
+    if (contentMode === 'code') {
+        if (mode === 'en') {
+            codeType = 'english';
+        } else if (codeType === 'english') {
+            codeType = 'cangjie';
+        }
+    }
+
     startGame();
 }
 
 function switchContentMode(mode) {
     contentMode = mode;
 
-    if (mode === 'sentence') {
-        modeSentenceBtn.classList.add('active');
-        modeArticleBtn.classList.remove('active');
-        textDisplay.classList.remove('article-mode');
-        inputArea.classList.remove('article-mode');
+    // 按鈕狀態更新
+    modeSentenceBtn.classList.toggle('active', mode === 'sentence');
+    modeArticleBtn.classList.toggle('active', mode === 'article');
+    modeCodeBtn.classList.toggle('active', mode === 'code');
+
+    // CSS 類別更新
+    textDisplay.classList.toggle('article-mode', mode === 'article');
+    textDisplay.classList.toggle('code-mode', mode === 'code');
+    inputArea.classList.toggle('article-mode', mode === 'article');
+    inputArea.classList.toggle('code-mode', mode === 'code');
+
+    // 顯示/隱藏字碼類型選擇器
+    updateCodeTypeVisibility();
+
+    if (mode === 'code') {
+        // 字碼模式下禁用自動完成
+        inputArea.setAttribute('autocomplete', 'off');
+        inputArea.setAttribute('autocorrect', 'off');
+        inputArea.setAttribute('autocapitalize', 'off');
+        inputArea.setAttribute('spellcheck', 'false');
+
+        // 根據語言設定字碼類型
+        if (currentMode === 'en') {
+            codeType = 'english';
+        } else if (codeType === 'english') {
+            // 如果是中文但 codeType 還是 english，改為 cangjie
+            codeType = 'cangjie';
+        }
     } else {
-        modeArticleBtn.classList.add('active');
-        modeSentenceBtn.classList.remove('active');
-        textDisplay.classList.add('article-mode');
-        inputArea.classList.add('article-mode');
+        inputArea.removeAttribute('autocomplete');
+        inputArea.removeAttribute('autocorrect');
+        inputArea.removeAttribute('autocapitalize');
+        inputArea.removeAttribute('spellcheck');
     }
 
     updateNewsCount();
     startGame();
 }
 
+function updateCodeTypeVisibility() {
+    const codeTypeSection = document.getElementById('code-type-section');
+    if (!codeTypeSection) return;
+
+    // 只有在字碼模式 + 中文語言時才顯示字碼類型選擇
+    if (contentMode === 'code' && currentMode === 'zh') {
+        codeTypeSection.classList.remove('hidden');
+    } else {
+        codeTypeSection.classList.add('hidden');
+    }
+}
+
+function switchCodeType(type) {
+    codeType = type;
+
+    // 更新按鈕狀態
+    document.querySelectorAll('#code-type-controls .mode-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.codeType === type);
+    });
+
+    // 重新開始遊戲
+    startGame();
+}
+
+function initCodeTypeControls() {
+    document.querySelectorAll('#code-type-controls .mode-btn').forEach(btn => {
+        btn.onclick = () => switchCodeType(btn.dataset.codeType);
+    });
+}
+
+// ===== 字碼模式按鍵處理 =====
+
+function handleCodeKeypress(key) {
+    // 啟動計時器
+    if (startTime === null) {
+        startTime = Date.now();
+    }
+
+    // Backspace: 刪除最後一個字符
+    if (key === 'Backspace') {
+        if (inputArea.value.length > 0) {
+            inputArea.value = inputArea.value.slice(0, -1);
+            updateDisplay(inputArea.value);
+            if (autoShowEncoding && codeType !== 'english') {
+                showEncodingHint();
+            }
+        }
+        return;
+    }
+
+    // 取得當前位置的預期字碼
+    const currentIndex = inputArea.value.length;
+    if (currentIndex >= currentPassage.length) {
+        completeTest();
+        return;
+    }
+
+    const expectedCode = currentPassage[currentIndex];
+    const codeSet = CODE_CHARACTERS[codeType];
+
+    // 判斷按鍵是否正確
+    let pressedChar;
+    if (codeSet.keyMap) {
+        // 需要映射（注音、倉頡）
+        pressedChar = codeSet.keyMap[key];
+    } else {
+        // 直接使用（英文）
+        pressedChar = key.toLowerCase();
+    }
+
+    if (pressedChar === expectedCode) {
+        // 正確：累加輸入並前進
+        inputArea.value += expectedCode;
+        updateDisplay(inputArea.value);
+
+        // 顯示下一個字碼的編碼提示
+        if (autoShowEncoding && codeType !== 'english') {
+            showEncodingHint();
+        }
+
+        // 檢查是否完成
+        if (inputArea.value.length >= currentPassage.length) {
+            completeTest();
+        }
+    } else if (pressedChar !== undefined) {
+        // 錯誤：增加錯誤計數但不前進
+        errorCount++;
+        flashError();
+    }
+}
+
+function flashError() {
+    // 視覺錯誤回饋
+    const currentIndex = inputArea.value.length;
+    const chars = textDisplay.querySelectorAll('.char');
+    if (chars[currentIndex]) {
+        chars[currentIndex].classList.add('flash-error');
+        setTimeout(() => {
+            chars[currentIndex].classList.remove('flash-error');
+        }, 300);
+    }
+}
+
 // ===== 事件監聯 =====
 
 function setupEventListeners() {
     inputArea.addEventListener('input', (e) => {
-        if (isTestComplete) return;
+        if (isTestComplete || contentMode === 'code') return;  // 字碼模式跳過
 
         const inputText = e.target.value;
 
@@ -948,6 +1180,31 @@ function setupEventListeners() {
         // 只有在 focus 在輸入框或測試已完成時才攔截按鍵
         const isInputActive = document.activeElement === inputArea;
 
+        // 字碼模式的按鍵處理
+        if (contentMode === 'code' && !isTestComplete && isInputActive) {
+            // 特殊鍵處理
+            if (e.key === 'Tab') {
+                e.preventDefault();
+                showEncodingHint();
+                return;
+            }
+            if (e.key === 'Escape') {
+                completeTest();
+                return;
+            }
+            if (e.key === 'Enter') {
+                return;  // 字碼模式忽略 Enter
+            }
+
+            // 一般按鍵處理
+            if (e.key.length === 1 || e.key === 'Backspace') {
+                e.preventDefault();
+                handleCodeKeypress(e.key);
+            }
+            return;
+        }
+
+        // 原有的按鍵處理（句子/文章模式）
         if (e.key === 'Tab') {
             if (isInputActive && !isTestComplete) {
                 e.preventDefault();

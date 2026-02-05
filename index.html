@@ -17,27 +17,76 @@
         </div>
     </div>
 
-    <div class="container">
-        <h1>打字速度測試</h1>
+    <div class="app-layout">
+        <!-- 左側邊欄 -->
+        <aside class="sidebar">
+            <!-- 拆碼提示框在最上方 -->
+            <div id="encoding-hint" class="hidden sidebar-encoding-hint">
+                <div class="encoding-title">編碼提示</div>
+                <div class="encoding-char" id="hint-char"></div>
+                <div class="encoding-list">
+                    <div class="encoding-item">
+                        <span class="encoding-label">注音</span>
+                        <span class="encoding-value" id="hint-zhuyin">-</span>
+                    </div>
+                    <div class="encoding-item">
+                        <span class="encoding-label">倉頡</span>
+                        <span class="encoding-value" id="hint-cangjie">-</span>
+                    </div>
+                    <div class="encoding-item">
+                        <span class="encoding-label">無蝦米</span>
+                        <span class="encoding-value" id="hint-boshiamy">-</span>
+                    </div>
+                    <div class="encoding-item">
+                        <span class="encoding-label">拼音</span>
+                        <span class="encoding-value" id="hint-pinyin">-</span>
+                    </div>
+                </div>
+            </div>
 
-        <div class="mode-switch">
-            <button id="mode-en" class="mode-btn">English</button>
-            <button id="mode-zh" class="mode-btn active">中文</button>
-        </div>
+            <h2 class="sidebar-title">設定</h2>
 
-        <div class="content-mode-switch">
-            <button id="mode-sentence" class="content-mode-btn active">句子模式</button>
-            <button id="mode-article" class="content-mode-btn">文章模式</button>
-        </div>
+            <div class="sidebar-section">
+                <h3>語言模式</h3>
+                <div class="mode-switch">
+                    <button id="mode-en" class="mode-btn">English</button>
+                    <button id="mode-zh" class="mode-btn active">中文</button>
+                </div>
+            </div>
 
-        <div class="theme-switch">
-            <button class="mode-btn active" data-theme="dark">深色</button>
-            <button class="mode-btn" data-theme="grayscale">灰階</button>
-            <button class="mode-btn" data-theme="contrast">對比</button>
-            <button class="mode-btn" data-theme="light">淺色</button>
-        </div>
+            <div class="sidebar-section">
+                <h3>內容模式</h3>
+                <div class="content-mode-switch">
+                    <button id="mode-code" class="mode-btn">字碼</button>
+                    <button id="mode-sentence" class="mode-btn active">句子</button>
+                    <button id="mode-article" class="mode-btn">文章</button>
+                </div>
+            </div>
 
-        <div id="text-display"></div>
+            <div class="sidebar-section hidden" id="code-type-section">
+                <h3>字碼類型</h3>
+                <div class="code-type-switch" id="code-type-controls">
+                    <button class="mode-btn" data-code-type="zhuyin">注音</button>
+                    <button class="mode-btn active" data-code-type="cangjie">倉頡</button>
+                </div>
+            </div>
+
+            <div class="sidebar-section">
+                <h3>主題</h3>
+                <div class="theme-switch">
+                    <button class="mode-btn active" data-theme="dark">深色</button>
+                    <button class="mode-btn" data-theme="grayscale">灰階</button>
+                    <button class="mode-btn" data-theme="contrast">對比</button>
+                    <button class="mode-btn" data-theme="light">淺色</button>
+                </div>
+            </div>
+        </aside>
+
+        <!-- 主要內容區 -->
+        <main class="main-content">
+            <h1>打字速度測試</h1>
+
+            <div id="text-display"></div>
 
         <textarea id="input-area" placeholder="開始輸入..." autofocus></textarea>
 
@@ -68,29 +117,7 @@
         </div>
 
         <button id="restart-btn" class="hidden">再試一次 (Enter)</button>
-    </div>
-
-    <div id="encoding-hint" class="hidden">
-        <div class="encoding-title">編碼提示</div>
-        <div class="encoding-char" id="hint-char"></div>
-        <div class="encoding-list">
-            <div class="encoding-item">
-                <span class="encoding-label">注音</span>
-                <span class="encoding-value" id="hint-zhuyin">-</span>
-            </div>
-            <div class="encoding-item">
-                <span class="encoding-label">倉頡</span>
-                <span class="encoding-value" id="hint-cangjie">-</span>
-            </div>
-            <div class="encoding-item">
-                <span class="encoding-label">無蝦米</span>
-                <span class="encoding-value" id="hint-boshiamy">-</span>
-            </div>
-            <div class="encoding-item">
-                <span class="encoding-label">拼音</span>
-                <span class="encoding-value" id="hint-pinyin">-</span>
-            </div>
-        </div>
+        </main>
     </div>
 
     <script src="encoding-data.js"></script>

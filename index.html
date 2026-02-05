@@ -34,12 +34,18 @@
 
         <textarea id="input-area" placeholder="開始輸入..." autofocus></textarea>
 
-        <p class="hint">
-            💡 按 <kbd>Tab</kbd> 編碼提示 |
-            按 <kbd>Esc</kbd> 結束測試 |
-            打完按 <kbd>Enter</kbd> 送出 |
-            題庫: <span id="news-count">0</span> 篇
-        </p>
+        <div class="hint-section">
+            <p class="hint">
+                💡 按 <kbd>Tab</kbd> 編碼提示 |
+                按 <kbd>Esc</kbd> 結束測試 |
+                打完按 <kbd>Enter</kbd> 送出 |
+                題庫: <span id="news-count">0</span> 篇
+            </p>
+            <label class="encoding-option">
+                <input type="checkbox" id="auto-show-encoding" checked>
+                持續顯示中文拆碼
+            </label>
+        </div>
 
         <div id="results" class="hidden">
             <h2>結果</h2>

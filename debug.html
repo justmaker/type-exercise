@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <title>LocalStorage Debug</title>
+</head>
+<body>
+    <h1>LocalStorage 檢查工具</h1>
+    <div id="output"></div>
+    <button onclick="clearCache()">清除快取</button>
+
+    <script>
+        const output = document.getElementById('output');
+
+        // 檢查 localStorage
+        const keys = [
+            'typing_data_version',
+            'typing_news_date',
+            'typing_news_zh',
+            'typing_news_en'
+        ];
+
+        let html = '<h2>目前 localStorage 內容：</h2>';
+
+        keys.forEach(key => {
+            const value = localStorage.getItem(key);
+            if (value) {
+                try {
+                    const parsed = JSON.parse(value);
+                    if (Array.isArray(parsed)) {
+                        html += `<p><strong>${key}:</strong> Array with ${parsed.length} items</p>`;
+                        html += `<pre>${JSON.stringify(parsed.slice(0, 3), null, 2)}</pre>`;
+                    } else {
+                        html += `<p><strong>${key}:</strong> ${value}</p>`;
+                    }
+                } catch (e) {
+                    html += `<p><strong>${key}:</strong> ${value}</p>`;
+                }
+            } else {
+                html += `<p><strong>${key}:</strong> (空的)</p>`;
+            }
+        });
+
+        output.innerHTML = html;
+
+        function clearCache() {
+            keys.forEach(key => localStorage.removeItem(key));
+            alert('快取已清除！請重新載入主頁面。');
+            location.reload();
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <title>Fetch Test</title>
+    <style>
+        body { font-family: monospace; padding: 20px; }
+        .success { color: green; }
+        .error { color: red; }
+        pre { background: #f0f0f0; padding: 10px; border-radius: 5px; }
+    </style>
+</head>
+<body>
+    <h1>daily_news.json Fetch 測試</h1>
+    <button onclick="testFetch()">測試載入</button>
+    <div id="result"></div>
+
+    <script>
+        async function testFetch() {
+            const result = document.getElementById('result');
+            result.innerHTML = '<p>載入中...</p>';
+
+            try {
+                console.log('開始測試...');
+                const url = `daily_news.json?t=${Date.now()}`;
+                console.log('URL:', url);
+
+                const response = await fetch(url);
+                console.log('Response:', response);
+
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+
+                const data = await response.json();
+                console.log('Data loaded:', data);
+
+                result.innerHTML = `
+                    <h2 class="success">✓ 載入成功！</h2>
+                    <p><strong>日期:</strong> ${data.date}</p>
+                    <p><strong>中文標題數量:</strong> ${data.zh?.length || 0}</p>
+                    <p><strong>英文標題數量:</strong> ${data.en?.length || 0}</p>
+                    <p><strong>中文文章數量:</strong> ${data.articles_zh?.length || 0}</p>
+                    <p><strong>英文文章數量:</strong> ${data.articles_en?.length || 0}</p>
+
+                    <h3>前 5 個中文標題:</h3>
+                    <pre>${JSON.stringify(data.zh?.slice(0, 5) || [], null, 2)}</pre>
+
+                    <h3>完整資料 (前 100 行):</h3>
+                    <pre>${JSON.stringify(data, null, 2).split('\n').slice(0, 100).join('\n')}</pre>
+                `;
+            } catch (error) {
+                console.error('錯誤:', error);
+                result.innerHTML = `
+                    <h2 class="error">✗ 載入失敗！</h2>
+                    <p><strong>錯誤訊息:</strong> ${error.message}</p>
+                    <p><strong>錯誤類型:</strong> ${error.name}</p>
+                    <pre>${error.stack}</pre>
+                `;
+            }
+        }
+
+        // 自動執行一次
+        window.onload = () => {
+            console.log('頁面載入完成，自動執行測試...');
+            testFetch();
+        };
+    </script>
+</body>
+</html>

@@ -17,7 +17,8 @@ const STORAGE_KEYS = {
     NEWS_EN: 'typing_news_en',
     ENCODING_CACHE: 'typing_encoding_cache',
     LEADERBOARD_ZH: 'typing_leaderboard_zh',
-    LEADERBOARD_EN: 'typing_leaderboard_en'
+    LEADERBOARD_EN: 'typing_leaderboard_en',
+    AUTO_SHOW_ENCODING: 'typing_auto_show_encoding'
 };
 // 字典資料 (從 dictionary-data.js 預載入，或從 dictionary.json 動態載入)
 // 格式: { char: { zhuyin, cangjie, boshiamy, pinyin } }
@@ -61,6 +62,10 @@ let currentPassage = '';
 let startTime = null;
 let errorCount = 0;
 let isTestComplete = false;
+// 自動顯示編碼提示
+let autoShowEncoding = true;
+// 追蹤上一次正確輸入的字符數量
+let previousCorrectCount = 0;
 
 // 新聞資料（從 localStorage 載入，或使用備用句子）
 // 備用句子：當 fetch 無法載入新聞時使用（例如 file:// 協議）
@@ -125,6 +130,7 @@ let achievementDiv = null;
 let leaderboardList = null;
 let newsCountSpan = null;
 let scoreSpan = null;
+let autoShowEncodingCheckbox = null;
 
 // 編碼提示元素
 const encodingHint = document.getElementById('encoding-hint');
@@ -170,6 +176,36 @@ function loadEncodingCache() {
 
 function saveEncodingCache() {
     saveToStorage(STORAGE_KEYS.ENCODING_CACHE, persistentEncodingCache);
+}
+
+// ===== 自動顯示編碼設定 =====
+
+function loadAutoShowEncodingSetting() {
+    const saved = loadFromStorage(STORAGE_KEYS.AUTO_SHOW_ENCODING);
+    // 預設為 true（開啟）
+    autoShowEncoding = saved !== null ? saved : true;
+
+    // 更新 checkbox 狀態
+    if (autoShowEncodingCheckbox) {
+        autoShowEncodingCheckbox.checked = autoShowEncoding;
+    }
+}
+
+function saveAutoShowEncodingSetting() {
+    saveToStorage(STORAGE_KEYS.AUTO_SHOW_ENCODING, autoShowEncoding);
+}
+
+function toggleAutoShowEncoding(enabled) {
+    autoShowEncoding = enabled;
+    saveAutoShowEncodingSetting();
+
+    // 如果關閉自動顯示，則隱藏編碼提示
+    if (!autoShowEncoding) {
+        hideEncodingHint();
+    } else if (currentMode === 'zh' && !isTestComplete) {
+        // 如果開啟自動顯示且在中文模式，立即顯示當前字符的編碼
+        showEncodingHint();
+    }
 }
 
 // 取得編碼（同步，從快取或本地資料庫）
@@ -426,6 +462,7 @@ async function bootstrap() {
     leaderboardList = document.getElementById('leaderboard-list');
     newsCountSpan = document.getElementById('news-count');
     scoreSpan = document.getElementById('score');
+    autoShowEncodingCheckbox = document.getElementById('auto-show-encoding');
 
     // 3. 綁定事件處理器
     updateLoadingStatus('綁定事件處理器...');
@@ -434,11 +471,15 @@ async function bootstrap() {
     if (modeSentenceBtn) modeSentenceBtn.onclick = () => switchContentMode('sentence');
     if (modeArticleBtn) modeArticleBtn.onclick = () => switchContentMode('article');
     if (restartBtn) restartBtn.onclick = startGame;
+    if (autoShowEncodingCheckbox) {
+        autoShowEncodingCheckbox.onchange = (e) => toggleAutoShowEncoding(e.target.checked);
+    }
     setupEventListeners();
 
-    // 4. 載入編碼快取
+    // 4. 載入編碼快取和設定
     updateLoadingStatus('載入編碼快取...');
     loadEncodingCache();
+    loadAutoShowEncodingSetting();
 
     // 5. 載入字典資料
     updateLoadingStatus('載入字典資料...');
@@ -506,6 +547,7 @@ function startGame() {
     startTime = null;
     errorCount = 0;
     isTestComplete = false;
+    previousCorrectCount = 0;  // 重置正確字符數量追蹤
 
     // 更新新聞數量顯示
     updateNewsCount();
@@ -519,7 +561,13 @@ function startGame() {
 
     resultsDiv.classList.add('hidden');
     restartBtn.classList.add('hidden');
-    hideEncodingHint();
+
+    // 如果啟用自動顯示編碼且在中文模式，則顯示第一個字符的編碼
+    if (autoShowEncoding && currentMode === 'zh') {
+        showEncodingHint();
+    } else {
+        hideEncodingHint();
+    }
 }
 
 function renderPassage() {
@@ -709,7 +757,18 @@ function getCurrentChar() {
 
 async function showEncodingHint() {
     const inputText = inputArea.value;
-    const currentIndex = inputText.length;
+
+    // 計算實際已正確輸入的字符數量（作為當前位置）
+    let correctCount = 0;
+    for (let i = 0; i < Math.min(inputText.length, currentPassage.length); i++) {
+        if (inputText[i] === currentPassage[i]) {
+            correctCount++;
+        } else {
+            break; // 遇到第一個錯誤就停止計數
+        }
+    }
+
+    const currentIndex = correctCount;
 
     if (currentIndex >= currentPassage.length) return;
 
@@ -806,7 +865,26 @@ function setupEventListeners() {
         }
 
         updateDisplay(inputText);
-        hideEncodingHint();
+
+        // 如果啟用自動顯示編碼且在中文模式
+        if (autoShowEncoding && currentMode === 'zh') {
+            // 計算當前正確輸入的字符數量
+            let correctCount = 0;
+            for (let i = 0; i < Math.min(inputText.length, currentPassage.length); i++) {
+                if (inputText[i] === currentPassage[i]) {
+                    correctCount++;
+                } else {
+                    break;
+                }
+            }
+
+            // 只有當正確字符數量增加時，才更新編碼提示
+            if (correctCount > previousCorrectCount) {
+                showEncodingHint();
+            }
+
+            previousCorrectCount = correctCount;
+        }
     });
 
     document.addEventListener('keydown', (e) => {

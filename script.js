@@ -12,6 +12,7 @@ const NEWS_COUNT = 20;
 
 // localStorage keys
 const STORAGE_KEYS = {
+    DATA_VERSION: 'typing_data_version',
     NEWS_DATE: 'typing_news_date',
     NEWS_ZH: 'typing_news_zh',
     NEWS_EN: 'typing_news_en',
@@ -21,6 +22,9 @@ const STORAGE_KEYS = {
     AUTO_SHOW_ENCODING: 'typing_auto_show_encoding',
     THEME: 'typing_theme'
 };
+
+// 資料版本號 - 更新此版本號會清除舊的快取資料
+const DATA_VERSION = '2.0';
 
 // 字碼練習的字符集定義
 const CODE_CHARACTERS = {
@@ -444,9 +448,10 @@ async function loadTodayNewsInBackground() {
 
     const today = getTodayString();
     const savedDate = loadFromStorage(STORAGE_KEYS.NEWS_DATE);
+    const savedVersion = loadFromStorage(STORAGE_KEYS.DATA_VERSION);
 
-    // 如果已是今日資料，直接從 localStorage 載入
-    if (savedDate === today) {
+    // 如果已是今日資料且版本號正確，直接從 localStorage 載入
+    if (savedDate === today && savedVersion === DATA_VERSION) {
         const savedZh = loadFromStorage(STORAGE_KEYS.NEWS_ZH);
         const savedEn = loadFromStorage(STORAGE_KEYS.NEWS_EN);
 
@@ -454,9 +459,14 @@ async function loadTodayNewsInBackground() {
             newsData.zh = savedZh;
             newsData.en = savedEn;
             updateNewsCount();
-            console.log(`Loaded ${newsData.zh.length} zh + ${newsData.en.length} en news from localStorage cache`);
+            console.log(`Loaded ${newsData.zh.length} zh + ${newsData.en.length} en news from localStorage cache (v${DATA_VERSION})`);
             return;
         }
+    } else if (savedVersion !== DATA_VERSION) {
+        console.log(`Data version mismatch (saved: ${savedVersion}, current: ${DATA_VERSION}), clearing cache...`);
+        localStorage.removeItem(STORAGE_KEYS.NEWS_DATE);
+        localStorage.removeItem(STORAGE_KEYS.NEWS_ZH);
+        localStorage.removeItem(STORAGE_KEYS.NEWS_EN);
     }
 
     // 嘗試載入 daily_news.json
@@ -480,11 +490,12 @@ async function loadTodayNewsInBackground() {
                 updateNewsCount();
 
                 // 儲存到 localStorage
+                saveToStorage(STORAGE_KEYS.DATA_VERSION, DATA_VERSION);
                 saveToStorage(STORAGE_KEYS.NEWS_DATE, today);
                 saveToStorage(STORAGE_KEYS.NEWS_ZH, newsData.zh);
                 saveToStorage(STORAGE_KEYS.NEWS_EN, newsData.en);
 
-                console.log(`Loaded ${newsData.zh.length} zh + ${newsData.en.length} en titles, ${articleData.zh.length} zh + ${articleData.en.length} en articles from daily_news.json`);
+                console.log(`Loaded ${newsData.zh.length} zh + ${newsData.en.length} en titles, ${articleData.zh.length} zh + ${articleData.en.length} en articles from daily_news.json (v${DATA_VERSION})`);
                 return;
             }
         }

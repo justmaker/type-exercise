@@ -12,24 +12,24 @@
     --text-primary: #eee;
     --text-muted: #888;
     --text-secondary: #ccc;
-    --accent-primary: #4ade80;
+    --accent-primary: #c084fc;
     --accent-secondary: #f59e0b;
-    --correct-char: #4ade80;
+    --correct-char: #c084fc;
     --incorrect-char: #f87171;
     --border-color: #16213e;
     --border-secondary: #333;
     --border-tertiary: #555;
     --border-hover: #888;
     --scrollbar-bg: #0f0f23;
-    --scrollbar-thumb: #4ade80;
+    --scrollbar-thumb: #c084fc;
     --white: #fff;
     --black: #000;
     --achievement-gradient-start: #f59e0b;
     --achievement-gradient-end: #d97706;
-    --achievement-top5-start: #3b82f6;
-    --achievement-top5-end: #1d4ed8;
-    --leaderboard-current-start: #4ade80;
-    --leaderboard-current-end: #22c55e;
+    --achievement-top5-start: #a855f7;
+    --achievement-top5-end: #7c3aed;
+    --leaderboard-current-start: #c084fc;
+    --leaderboard-current-end: #a855f7;
 }
 
 body {
@@ -163,7 +163,7 @@ h1 {
 }
 
 .mode-btn:hover {
-    background-color: rgba(74, 222, 128, 0.1);
+    background-color: rgba(192, 132, 252, 0.1);
 }
 
 .mode-btn.active {
@@ -203,7 +203,7 @@ h1 {
 
 .code-type-btn.active {
     border-color: var(--accent-primary);
-    background-color: rgba(74, 222, 128, 0.1);
+    background-color: rgba(192, 132, 252, 0.1);
     color: var(--accent-primary);
 }
 
@@ -427,7 +427,7 @@ h1 {
 }
 
 #restart-btn:hover {
-    background-color: #22c55e;
+    background-color: #a855f7;
 }
 
 .hidden {
@@ -479,7 +479,7 @@ h1 {
 
 .encoding-value {
     font-size: 1rem;
-    color: var(--white);
+    color: var(--text-primary);
     font-family: 'Consolas', 'Monaco', monospace;
     background-color: var(--bg-tertiary);
     padding: 0.2rem 0.5rem;
@@ -674,22 +674,22 @@ body.theme-light {
     --text-primary: #1a1a1a;
     --text-muted: #666666;
     --text-secondary: #333333;
-    --accent-primary: #16a34a;
+    --accent-primary: #9333ea;
     --accent-secondary: #2563eb;
-    --correct-char: #16a34a;
+    --correct-char: #9333ea;
     --incorrect-char: #dc2626;
     --border-color: #d1d5db;
     --border-secondary: #e5e7eb;
     --border-tertiary: #9ca3af;
     --border-hover: #6b7280;
     --scrollbar-bg: #e8e8e8;
-    --scrollbar-thumb: #16a34a;
+    --scrollbar-thumb: #9333ea;
     --white: #ffffff;
     --black: #000000;
     --achievement-gradient-start: #fbbf24;
     --achievement-gradient-end: #f59e0b;
-    --achievement-top5-start: #3b82f6;
-    --achievement-top5-end: #2563eb;
-    --leaderboard-current-start: #16a34a;
-    --leaderboard-current-end: #15803d;
+    --achievement-top5-start: #a855f7;
+    --achievement-top5-end: #7c3aed;
+    --leaderboard-current-start: #9333ea;
+    --leaderboard-current-end: #7c3aed;
 }

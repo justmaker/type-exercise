@@ -307,6 +307,15 @@ function initThemeControls() {
     });
 }
 
+// 移除拼音聲調數字（ni3 -> ni）
+function removePinyinTone(pinyin) {
+    if (!pinyin || pinyin === '無資料' || pinyin === '查詢中...' || pinyin === '查無資料' || pinyin === '非中文') {
+        return pinyin;
+    }
+    // 移除結尾的數字 1-5
+    return pinyin.replace(/[1-5]$/g, '');
+}
+
 // 取得編碼（同步，從快取或本地資料庫）
 function getCachedEncoding(char) {
     // 1. 先檢查新的 dictionary.json 資料（優先）
@@ -996,7 +1005,8 @@ async function showEncodingHint() {
         hintZhuyin.textContent = encoding.zhuyin || '無資料';
         hintCangjie.textContent = encoding.cangjie || '無資料';
         hintBoshiamy.textContent = encoding.boshiamy || '無資料';
-        hintPinyin.textContent = encoding.pinyin || '無資料';
+        // 移除拼音聲調數字，顯示實際輸入格式
+        hintPinyin.textContent = removePinyinTone(encoding.pinyin) || '無資料';
     } else {
         hintZhuyin.textContent = '查無資料';
         hintCangjie.textContent = '查無資料';

@@ -2,6 +2,16 @@
 
 一個支援中英文的打字速度測試工具，整合完整的中文輸入法字碼查詢功能。
 
+## 🚀 立即使用
+
+**無需安裝，直接訪問：**
+
+### 👉 [https://justmaker.github.io/type-exercise/](https://justmaker.github.io/type-exercise/)
+
+> 透過 GitHub Pages 部署，支援完整的 100 篇每日新聞練習文本，無需本地伺服器！
+
+---
+
 ## 功能特色
 
 - ✅ **雙語支援**：中文 / English
@@ -14,17 +24,35 @@
 
 ## 快速開始
 
-### 方法一：HTTP 伺服器（推薦）
+### 方法一：線上訪問（最簡單 ⭐）
+
+直接開啟網址，無需任何設定：
+```
+https://justmaker.github.io/type-exercise/
+```
+
+**優點：**
+- ✅ 不需要安裝任何軟體
+- ✅ 不需要啟動本地伺服器
+- ✅ 完整的 100 篇新聞題庫
+- ✅ 自動更新（每次 git push 後自動部署）
+- ✅ 支援所有功能（字碼查詢、排行榜、快捷鍵等）
+
+### 方法二：本地開發
+
+如果你需要修改程式碼或本地測試：
 
 ```bash
 # 啟動本地伺服器
-python3 -m http.server 8080
+python3 -m http.server 8000
 
 # 開啟瀏覽器
-open http://localhost:8080
+open http://localhost:8000
 ```
 
-### 方法二：更新每日新聞
+**重要：** 不要直接雙擊 `index.html` 開啟，會因為 CORS 限制無法載入資料。
+
+### 方法三：更新每日新聞（開發者）
 
 ```bash
 # 安裝依賴（首次執行）
@@ -34,7 +62,7 @@ pip3 install feedparser beautifulsoup4
 python3 fetch_news.py
 
 # 啟動伺服器
-python3 -m http.server 8080
+python3 -m http.server 8000
 ```
 
 ## 檔案說明
@@ -162,7 +190,20 @@ python3 build_dict.py
 
 ### Q: 為什麼直接開啟 index.html 會卡住？
 
-A: 瀏覽器的 CORS 安全政策會阻擋 `file://` 協議下的 fetch 請求。請使用 HTTP 伺服器。
+A: 瀏覽器的 CORS 安全政策會阻擋 `file://` 協議下的 fetch 請求。請使用以下任一方式：
+- **推薦：** 訪問線上版本 https://justmaker.github.io/type-exercise/
+- 本地開發：啟動 HTTP 伺服器 `python3 -m http.server 8000`
+
+### Q: 為什麼題庫只顯示 5 篇或 20 篇，而不是 100 篇？
+
+A: 這是因為：
+1. 使用 `file://` 協議開啟（CORS 限制導致無法載入 `daily_news.json`）
+2. localStorage 快取了舊資料
+
+**解決方法：**
+- 訪問 https://justmaker.github.io/type-exercise/
+- 或在本地執行 `python3 -m http.server 8000` 並訪問 http://localhost:8000/
+- 在瀏覽器 Console 執行 `forceReload()` 清除快取
 
 ### Q: 如何更新每日新聞？
 

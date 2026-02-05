@@ -18,7 +18,8 @@ const STORAGE_KEYS = {
     ENCODING_CACHE: 'typing_encoding_cache',
     LEADERBOARD_ZH: 'typing_leaderboard_zh',
     LEADERBOARD_EN: 'typing_leaderboard_en',
-    AUTO_SHOW_ENCODING: 'typing_auto_show_encoding'
+    AUTO_SHOW_ENCODING: 'typing_auto_show_encoding',
+    THEME: 'typing_theme'
 };
 // 字典資料 (從 dictionary-data.js 預載入，或從 dictionary.json 動態載入)
 // 格式: { char: { zhuyin, cangjie, boshiamy, pinyin } }
@@ -58,6 +59,8 @@ async function loadDictionary() {
 let currentMode = 'zh';
 // 內容模式 ('sentence' 或 'article')
 let contentMode = 'sentence';
+// 當前主題
+let currentTheme = 'dark';
 let currentPassage = '';
 let startTime = null;
 let errorCount = 0;
@@ -206,6 +209,58 @@ function toggleAutoShowEncoding(enabled) {
         // 如果開啟自動顯示且在中文模式，立即顯示當前字符的編碼
         showEncodingHint();
     }
+}
+
+// ===== 主題管理 =====
+
+function loadTheme() {
+    const saved = loadFromStorage(STORAGE_KEYS.THEME);
+    // 預設為 'dark' 主題
+    currentTheme = saved || 'dark';
+    applyTheme(currentTheme, false);
+}
+
+function applyTheme(themeName, save = true) {
+    // 移除所有主題類別
+    document.body.classList.remove('theme-dark', 'theme-grayscale', 'theme-contrast', 'theme-light');
+
+    // 添加新的主題類別
+    document.body.classList.add(`theme-${themeName}`);
+
+    // 更新當前主題
+    currentTheme = themeName;
+
+    // 儲存到 localStorage
+    if (save) {
+        saveToStorage(STORAGE_KEYS.THEME, themeName);
+    }
+}
+
+function initThemeControls() {
+    const themeButtons = document.querySelectorAll('.theme-switch button');
+
+    themeButtons.forEach(button => {
+        const theme = button.dataset.theme;
+
+        // 設定初始 active 狀態
+        if (theme === currentTheme) {
+            button.classList.add('active');
+        } else {
+            button.classList.remove('active');
+        }
+
+        // 添加點擊事件
+        button.onclick = () => {
+            // 移除所有按鈕的 active 類別
+            themeButtons.forEach(btn => btn.classList.remove('active'));
+
+            // 添加 active 到被點擊的按鈕
+            button.classList.add('active');
+
+            // 套用主題
+            applyTheme(theme);
+        };
+    });
 }
 
 // 取得編碼（同步，從快取或本地資料庫）
@@ -476,10 +531,12 @@ async function bootstrap() {
     }
     setupEventListeners();
 
-    // 4. 載入編碼快取和設定
+    // 4. 載入編碼快取、設定和主題
     updateLoadingStatus('載入編碼快取...');
     loadEncodingCache();
     loadAutoShowEncodingSetting();
+    loadTheme();
+    initThemeControls();
 
     // 5. 載入字典資料
     updateLoadingStatus('載入字典資料...');

@@ -440,12 +440,6 @@ function initNewsWithFallback() {
 
 // 背景載入今日新聞
 async function loadTodayNewsInBackground() {
-    // file:// 協議下無法 fetch，跳過背景載入
-    if (window.location.protocol === 'file:') {
-        console.log('Running locally (file://), skipping background news fetch');
-        return;
-    }
-
     const today = getTodayString();
     const savedDate = loadFromStorage(STORAGE_KEYS.NEWS_DATE);
     const savedVersion = loadFromStorage(STORAGE_KEYS.DATA_VERSION);

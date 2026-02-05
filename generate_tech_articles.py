@@ -166,9 +166,9 @@ def main():
     zh_articles = generate_chinese_tech_articles()
     en_articles = generate_english_tech_articles()
 
-    # Also generate titles
-    zh_titles = [article['title'] for article in zh_articles[:20]]
-    en_titles = [article['title'] for article in en_articles[:20]]
+    # Generate 100 titles from articles
+    zh_titles = [article['title'] for article in zh_articles]
+    en_titles = [article['title'] for article in en_articles]
 
     data = {
         'date': datetime.now().strftime('%Y-%m-%d'),

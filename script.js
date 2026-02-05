@@ -24,7 +24,7 @@ const STORAGE_KEYS = {
 };
 
 // 資料版本號 - 更新此版本號會清除舊的快取資料
-const DATA_VERSION = '2.0';
+const DATA_VERSION = '3.0';
 
 // 字碼練習的字符集定義
 const CODE_CHARACTERS = {
@@ -444,32 +444,60 @@ async function loadTodayNewsInBackground() {
     const savedDate = loadFromStorage(STORAGE_KEYS.NEWS_DATE);
     const savedVersion = loadFromStorage(STORAGE_KEYS.DATA_VERSION);
 
+    console.log('=== loadTodayNewsInBackground DEBUG ===');
+    console.log('Today:', today);
+    console.log('Saved date:', savedDate);
+    console.log('Saved version:', savedVersion);
+    console.log('Current version:', DATA_VERSION);
+
     // 如果已是今日資料且版本號正確，直接從 localStorage 載入
     if (savedDate === today && savedVersion === DATA_VERSION) {
+        console.log('✓ Date and version match, checking cache...');
         const savedZh = loadFromStorage(STORAGE_KEYS.NEWS_ZH);
         const savedEn = loadFromStorage(STORAGE_KEYS.NEWS_EN);
+
+        console.log('Cached zh length:', savedZh?.length || 0);
+        console.log('Cached en length:', savedEn?.length || 0);
 
         if (savedZh && savedZh.length >= 10 && savedEn && savedEn.length >= 10) {
             newsData.zh = savedZh;
             newsData.en = savedEn;
             updateNewsCount();
-            console.log(`Loaded ${newsData.zh.length} zh + ${newsData.en.length} en news from localStorage cache (v${DATA_VERSION})`);
+            console.log(`✓ Loaded ${newsData.zh.length} zh + ${newsData.en.length} en news from localStorage cache (v${DATA_VERSION})`);
             return;
+        } else {
+            console.log('✗ Cache data insufficient, will load from JSON');
         }
     } else if (savedVersion !== DATA_VERSION) {
-        console.log(`Data version mismatch (saved: ${savedVersion}, current: ${DATA_VERSION}), clearing cache...`);
+        console.log(`✗ Data version mismatch (saved: ${savedVersion}, current: ${DATA_VERSION}), clearing cache...`);
         localStorage.removeItem(STORAGE_KEYS.NEWS_DATE);
         localStorage.removeItem(STORAGE_KEYS.NEWS_ZH);
         localStorage.removeItem(STORAGE_KEYS.NEWS_EN);
+    } else {
+        console.log('✗ Date mismatch or no cache, will load from JSON');
     }
 
     // 嘗試載入 daily_news.json
+    console.log('→ Attempting to load daily_news.json...');
     try {
-        const response = await fetch(`daily_news.json?t=${Date.now()}`);
+        const url = `daily_news.json?t=${Date.now()}`;
+        console.log('Fetch URL:', url);
+
+        const response = await fetch(url);
+        console.log('Response status:', response.status);
+        console.log('Response OK:', response.ok);
+
         if (response.ok) {
             const data = await response.json();
+            console.log('JSON parsed successfully');
+            console.log('JSON date:', data.date);
+            console.log('JSON zh length:', data.zh?.length || 0);
+            console.log('JSON en length:', data.en?.length || 0);
+            console.log('JSON articles_zh length:', data.articles_zh?.length || 0);
+            console.log('JSON articles_en length:', data.articles_en?.length || 0);
 
             if (data.date === today && data.zh && data.en) {
+                console.log('✓ Date matches and data exists');
                 newsData.zh = data.zh;
                 newsData.en = data.en;
 
@@ -489,12 +517,20 @@ async function loadTodayNewsInBackground() {
                 saveToStorage(STORAGE_KEYS.NEWS_ZH, newsData.zh);
                 saveToStorage(STORAGE_KEYS.NEWS_EN, newsData.en);
 
-                console.log(`Loaded ${newsData.zh.length} zh + ${newsData.en.length} en titles, ${articleData.zh.length} zh + ${articleData.en.length} en articles from daily_news.json (v${DATA_VERSION})`);
+                console.log(`✓✓✓ SUCCESS! Loaded ${newsData.zh.length} zh + ${newsData.en.length} en titles, ${articleData.zh.length} zh + ${articleData.en.length} en articles from daily_news.json (v${DATA_VERSION})`);
                 return;
+            } else {
+                console.log('✗ Date mismatch or missing data');
+                console.log('Expected date:', today);
+                console.log('Got date:', data.date);
             }
+        } else {
+            console.log('✗ Response not OK');
         }
     } catch (error) {
-        console.warn('Failed to load daily_news.json:', error.message);
+        console.error('✗✗✗ Failed to load daily_news.json:', error);
+        console.error('Error details:', error.message);
+        console.error('Error stack:', error.stack);
     }
 
     // 如果 daily_news.json 不存在或過期，嘗試從 RSS 抓取
@@ -1261,12 +1297,61 @@ function setupEventListeners() {
 // 舊的事件綁定已移除，改在 bootstrap 內執行
 
 
+// ===== DEBUG 工具函式 (可從 console 呼叫) =====
+
+// 測試 daily_news.json 載入
+async function testLoadJSON() {
+    console.log('=== Testing daily_news.json load ===');
+    try {
+        const response = await fetch(`daily_news.json?t=${Date.now()}`);
+        console.log('Response:', response);
+        const data = await response.json();
+        console.log('Data:', data);
+        console.log('ZH count:', data.zh.length);
+        console.log('EN count:', data.en.length);
+        console.log('Articles ZH count:', data.articles_zh.length);
+        console.log('Articles EN count:', data.articles_en.length);
+        return data;
+    } catch (error) {
+        console.error('Error:', error);
+    }
+}
+
+// 檢查當前資料狀態
+function checkData() {
+    console.log('=== Current Data Status ===');
+    console.log('newsData.zh:', newsData.zh.length, 'items');
+    console.log('newsData.en:', newsData.en.length, 'items');
+    console.log('articleData.zh:', articleData.zh.length, 'items');
+    console.log('articleData.en:', articleData.en.length, 'items');
+    console.log('Current mode:', currentMode);
+    console.log('Content mode:', contentMode);
+    console.log('First 3 zh items:', newsData.zh.slice(0, 3));
+}
+
+// 強制清除快取並重新載入
+function forceReload() {
+    console.log('=== Force Reload ===');
+    localStorage.removeItem(STORAGE_KEYS.DATA_VERSION);
+    localStorage.removeItem(STORAGE_KEYS.NEWS_DATE);
+    localStorage.removeItem(STORAGE_KEYS.NEWS_ZH);
+    localStorage.removeItem(STORAGE_KEYS.NEWS_EN);
+    console.log('Cache cleared, reloading...');
+    location.reload();
+}
+
 // 啟動應用程式 (等待 DOM 載入完成)
 document.addEventListener('DOMContentLoaded', () => {
     // 重新抓取一次 DOM 元素以防萬一
     const statusEl = document.getElementById('loading-status');
     if (statusEl) console.log('Loading status element found');
     else console.error('Loading status element NOT found!');
+
+    console.log('=== DEBUG Functions Available ===');
+    console.log('testLoadJSON() - 測試載入 daily_news.json');
+    console.log('checkData() - 檢查當前資料狀態');
+    console.log('forceReload() - 強制清除快取並重新載入');
+    console.log('================================');
 
     bootstrap();
 });

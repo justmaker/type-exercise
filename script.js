@@ -178,6 +178,7 @@ let leaderboardList = null;
 let newsCountSpan = null;
 let scoreSpan = null;
 let autoShowEncodingCheckbox = null;
+let virtualKeyboard = null;
 
 // 編碼提示元素
 const encodingHint = document.getElementById('encoding-hint');
@@ -253,6 +254,9 @@ function toggleAutoShowEncoding(enabled) {
         // 如果開啟自動顯示且在中文模式，立即顯示當前字符的編碼
         showEncodingHint();
     }
+
+    // 連動虛擬鍵盤顯示
+    updateVirtualKeyboardVisibility();
 }
 
 // ===== 主題管理 =====
@@ -611,6 +615,7 @@ async function bootstrap() {
     newsCountSpan = document.getElementById('news-count');
     scoreSpan = document.getElementById('score');
     autoShowEncodingCheckbox = document.getElementById('auto-show-encoding');
+    virtualKeyboard = document.getElementById('virtual-keyboard');
 
     // 3. 綁定事件處理器
     updateLoadingStatus('綁定事件處理器...');
@@ -645,6 +650,10 @@ async function bootstrap() {
 
     // 7. 完成初始化
     updateLoadingStatus('初始化完成！');
+
+    // 初始化虛擬鍵盤
+    updateVirtualKeyboard();
+    updateVirtualKeyboardVisibility();
 
     // 隱藏載入畫面並開始遊戲
     setTimeout(() => {
@@ -723,6 +732,9 @@ function startGame() {
 
     // 更新新聞數量顯示
     updateNewsCount();
+
+    // 更新虛擬鍵盤可見性
+    updateVirtualKeyboardVisibility();
 
     renderPassage();
 
@@ -824,6 +836,7 @@ function completeTest() {
     resultsDiv.classList.remove('hidden');
     restartBtn.classList.remove('hidden');
     hideEncodingHint();
+    if (virtualKeyboard) virtualKeyboard.classList.add('hidden');
 }
 
 // ===== 排行榜功能 =====
@@ -928,36 +941,13 @@ function getCurrentChar() {
 }
 
 async function showEncodingHint() {
-    const inputText = inputArea.value;
-
-    // 字碼模式特殊處理
+    // 字碼模式不顯示拆碼框（改用虛擬鍵盤提示）
     if (contentMode === 'code') {
-        const currentIndex = inputText.length;
-        if (currentIndex >= currentPassage.length) return;
-
-        const code = currentPassage[currentIndex];
-        const codeSet = CODE_CHARACTERS[codeType];
-
-        hintChar.textContent = code;
-
-        if (codeSet.keyMap) {
-            // 找到對應的按鍵
-            const key = Object.keys(codeSet.keyMap).find(k => codeSet.keyMap[k] === code);
-            hintZhuyin.textContent = `按鍵: ${key || '?'}`;
-            hintCangjie.textContent = '-';
-            hintBoshiamy.textContent = '-';
-            hintPinyin.textContent = '-';
-        } else {
-            // 英文模式
-            hintZhuyin.textContent = `按鍵: ${code}`;
-            hintCangjie.textContent = '-';
-            hintBoshiamy.textContent = '-';
-            hintPinyin.textContent = '-';
-        }
-
-        encodingHint.classList.remove('hidden');
+        hideEncodingHint();
         return;
     }
+
+    const inputText = inputArea.value;
 
     // 計算實際已正確輸入的字符數量（作為當前位置）
     let correctCount = 0;
@@ -1044,6 +1034,7 @@ function switchMode(mode) {
         }
     }
 
+    updateVirtualKeyboard();
     startGame();
 }
 
@@ -1086,6 +1077,9 @@ function switchContentMode(mode) {
     }
 
     updateNewsCount();
+    updateEncodingLabel();
+    updateVirtualKeyboardVisibility();
+    updateVirtualKeyboard();
     startGame();
 }
 
@@ -1109,7 +1103,8 @@ function switchCodeType(type) {
         btn.classList.toggle('active', btn.dataset.codeType === type);
     });
 
-    // 重新開始遊戲
+    // 更新虛擬鍵盤並重新開始遊戲
+    updateVirtualKeyboard();
     startGame();
 }
 
@@ -1122,6 +1117,9 @@ function initCodeTypeControls() {
 // ===== 字碼模式按鍵處理 =====
 
 function handleCodeKeypress(key) {
+    // 清除上次的鍵盤高亮
+    clearKeyboardHighlights();
+
     // 啟動計時器
     if (startTime === null) {
         startTime = Date.now();
@@ -1177,6 +1175,7 @@ function handleCodeKeypress(key) {
         // 錯誤：增加錯誤計數但不前進
         errorCount++;
         flashError();
+        highlightKeyboardError(key, getPhysicalKeyForCode(expectedCode));
     }
 }
 
@@ -1190,6 +1189,70 @@ function flashError() {
             chars[currentIndex].classList.remove('flash-error');
         }, 300);
     }
+}
+
+// ===== 虛擬鍵盤 =====
+
+function updateVirtualKeyboard() {
+    if (!virtualKeyboard) return;
+    const codeSet = CODE_CHARACTERS[codeType];
+    const keys = virtualKeyboard.querySelectorAll('.kb-key');
+    keys.forEach(keyEl => {
+        const physicalKey = keyEl.dataset.key;
+        const codeSpan = keyEl.querySelector('.kb-code');
+        if (!codeSpan) return;
+        if (codeType === 'english') {
+            codeSpan.textContent = /^[a-z]$/.test(physicalKey) ? physicalKey.toUpperCase() : '';
+        } else if (codeSet.keyMap) {
+            codeSpan.textContent = codeSet.keyMap[physicalKey] || '';
+        } else {
+            codeSpan.textContent = '';
+        }
+    });
+}
+
+function updateVirtualKeyboardVisibility() {
+    if (!virtualKeyboard) return;
+    if (contentMode === 'code' && autoShowEncoding) {
+        virtualKeyboard.classList.remove('hidden');
+    } else {
+        virtualKeyboard.classList.add('hidden');
+    }
+}
+
+function updateEncodingLabel() {
+    if (!autoShowEncodingCheckbox) return;
+    const label = autoShowEncodingCheckbox.parentElement;
+    if (!label) return;
+    label.lastChild.textContent = contentMode === 'code' ? ' 持續顯示鍵盤' : ' 持續顯示中文拆碼';
+}
+
+function getPhysicalKeyForCode(codeChar) {
+    const codeSet = CODE_CHARACTERS[codeType];
+    if (codeType === 'english') {
+        return codeChar.toLowerCase();
+    }
+    if (codeSet.keyMap) {
+        for (const [physKey, mappedChar] of Object.entries(codeSet.keyMap)) {
+            if (mappedChar === codeChar) return physKey;
+        }
+    }
+    return null;
+}
+
+function clearKeyboardHighlights() {
+    if (!virtualKeyboard) return;
+    virtualKeyboard.querySelectorAll('.kb-wrong').forEach(el => el.classList.remove('kb-wrong'));
+    virtualKeyboard.querySelectorAll('.kb-correct').forEach(el => el.classList.remove('kb-correct'));
+}
+
+function highlightKeyboardError(pressedKey, expectedKey) {
+    if (!virtualKeyboard) return;
+    clearKeyboardHighlights();
+    const wrongKeyEl = virtualKeyboard.querySelector(`.kb-key[data-key="${CSS.escape(pressedKey)}"]`);
+    const correctKeyEl = expectedKey ? virtualKeyboard.querySelector(`.kb-key[data-key="${CSS.escape(expectedKey)}"]`) : null;
+    if (wrongKeyEl) wrongKeyEl.classList.add('kb-wrong');
+    if (correctKeyEl) correctKeyEl.classList.add('kb-correct');
 }
 
 // ===== 事件監聯 =====

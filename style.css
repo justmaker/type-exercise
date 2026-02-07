@@ -386,6 +386,103 @@ h1 {
     color: var(--white);
 }
 
+/* ===== 虛擬鍵盤 ===== */
+
+.virtual-keyboard {
+    width: 100%;
+    max-width: 700px;
+    margin: 1rem auto 0;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    user-select: none;
+}
+
+.kb-row {
+    display: flex;
+    justify-content: center;
+    gap: 4px;
+}
+
+.kb-row-top {
+    padding-left: 20px;
+}
+
+.kb-row-home {
+    padding-left: 30px;
+}
+
+.kb-row-bottom {
+    padding-left: 50px;
+}
+
+.kb-key {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    width: 48px;
+    height: 48px;
+    background-color: var(--bg-secondary);
+    border: 2px solid var(--border-secondary);
+    border-radius: 6px;
+    color: var(--text-muted);
+    transition: border-color 0.15s, background-color 0.15s;
+    flex-shrink: 0;
+}
+
+.kb-label {
+    font-size: 0.6rem;
+    color: var(--text-muted);
+    opacity: 0.6;
+    line-height: 1;
+}
+
+.kb-code {
+    font-size: 0.95rem;
+    color: var(--text-primary);
+    line-height: 1.2;
+    font-family: 'Microsoft JhengHei', 'PingFang TC', sans-serif;
+}
+
+.kb-key:has(.kb-code:empty) {
+    opacity: 0.3;
+}
+
+.kb-key.kb-wrong {
+    border-color: var(--incorrect-char);
+    background-color: rgba(248, 113, 113, 0.25);
+    animation: kb-flash-wrong 0.6s ease-out forwards;
+}
+
+.kb-key.kb-correct {
+    border-color: #4ade80;
+    background-color: rgba(74, 222, 128, 0.25);
+    animation: kb-flash-correct 0.6s ease-out forwards;
+}
+
+@keyframes kb-flash-wrong {
+    0% {
+        border-color: var(--incorrect-char);
+        background-color: rgba(248, 113, 113, 0.25);
+    }
+    100% {
+        border-color: var(--border-secondary);
+        background-color: var(--bg-secondary);
+    }
+}
+
+@keyframes kb-flash-correct {
+    0% {
+        border-color: #4ade80;
+        background-color: rgba(74, 222, 128, 0.25);
+    }
+    100% {
+        border-color: var(--border-secondary);
+        background-color: var(--bg-secondary);
+    }
+}
+
 #results {
     background-color: var(--bg-secondary);
     padding: 1.5rem;
@@ -600,6 +697,39 @@ h1 {
 
     #encoding-hint.sidebar-encoding-hint {
         margin-top: 1rem;
+    }
+
+    .virtual-keyboard {
+        gap: 3px;
+    }
+
+    .kb-row {
+        gap: 3px;
+    }
+
+    .kb-key {
+        width: 28px;
+        height: 36px;
+    }
+
+    .kb-label {
+        font-size: 0.45rem;
+    }
+
+    .kb-code {
+        font-size: 0.7rem;
+    }
+
+    .kb-row-top {
+        padding-left: 10px;
+    }
+
+    .kb-row-home {
+        padding-left: 16px;
+    }
+
+    .kb-row-bottom {
+        padding-left: 26px;
     }
 }
 

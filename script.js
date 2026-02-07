@@ -178,6 +178,7 @@ let leaderboardList = null;
 let newsCountSpan = null;
 let scoreSpan = null;
 let autoShowEncodingCheckbox = null;
+let virtualKeyboard = null;
 
 // 編碼提示元素
 const encodingHint = document.getElementById('encoding-hint');
@@ -611,6 +612,7 @@ async function bootstrap() {
     newsCountSpan = document.getElementById('news-count');
     scoreSpan = document.getElementById('score');
     autoShowEncodingCheckbox = document.getElementById('auto-show-encoding');
+    virtualKeyboard = document.getElementById('virtual-keyboard');
 
     // 3. 綁定事件處理器
     updateLoadingStatus('綁定事件處理器...');
@@ -645,6 +647,10 @@ async function bootstrap() {
 
     // 7. 完成初始化
     updateLoadingStatus('初始化完成！');
+
+    // 初始化虛擬鍵盤
+    updateVirtualKeyboard();
+    updateVirtualKeyboardVisibility();
 
     // 隱藏載入畫面並開始遊戲
     setTimeout(() => {
@@ -723,6 +729,9 @@ function startGame() {
 
     // 更新新聞數量顯示
     updateNewsCount();
+
+    // 更新虛擬鍵盤可見性
+    updateVirtualKeyboardVisibility();
 
     renderPassage();
 
@@ -1044,6 +1053,7 @@ function switchMode(mode) {
         }
     }
 
+    updateVirtualKeyboard();
     startGame();
 }
 
@@ -1086,6 +1096,8 @@ function switchContentMode(mode) {
     }
 
     updateNewsCount();
+    updateVirtualKeyboardVisibility();
+    updateVirtualKeyboard();
     startGame();
 }
 
@@ -1109,7 +1121,8 @@ function switchCodeType(type) {
         btn.classList.toggle('active', btn.dataset.codeType === type);
     });
 
-    // 重新開始遊戲
+    // 更新虛擬鍵盤並重新開始遊戲
+    updateVirtualKeyboard();
     startGame();
 }
 
@@ -1177,6 +1190,7 @@ function handleCodeKeypress(key) {
         // 錯誤：增加錯誤計數但不前進
         errorCount++;
         flashError();
+        highlightKeyboardError(key, getPhysicalKeyForCode(expectedCode));
     }
 }
 
@@ -1189,6 +1203,66 @@ function flashError() {
         setTimeout(() => {
             chars[currentIndex].classList.remove('flash-error');
         }, 300);
+    }
+}
+
+// ===== 虛擬鍵盤 =====
+
+function updateVirtualKeyboard() {
+    if (!virtualKeyboard) return;
+    const codeSet = CODE_CHARACTERS[codeType];
+    const keys = virtualKeyboard.querySelectorAll('.kb-key');
+    keys.forEach(keyEl => {
+        const physicalKey = keyEl.dataset.key;
+        const codeSpan = keyEl.querySelector('.kb-code');
+        if (!codeSpan) return;
+        if (codeType === 'english') {
+            codeSpan.textContent = /^[a-z]$/.test(physicalKey) ? physicalKey.toUpperCase() : '';
+        } else if (codeSet.keyMap) {
+            codeSpan.textContent = codeSet.keyMap[physicalKey] || '';
+        } else {
+            codeSpan.textContent = '';
+        }
+    });
+}
+
+function updateVirtualKeyboardVisibility() {
+    if (!virtualKeyboard) return;
+    if (contentMode === 'code') {
+        virtualKeyboard.classList.remove('hidden');
+    } else {
+        virtualKeyboard.classList.add('hidden');
+    }
+}
+
+function getPhysicalKeyForCode(codeChar) {
+    const codeSet = CODE_CHARACTERS[codeType];
+    if (codeType === 'english') {
+        return codeChar.toLowerCase();
+    }
+    if (codeSet.keyMap) {
+        for (const [physKey, mappedChar] of Object.entries(codeSet.keyMap)) {
+            if (mappedChar === codeChar) return physKey;
+        }
+    }
+    return null;
+}
+
+function highlightKeyboardError(pressedKey, expectedKey) {
+    if (!virtualKeyboard) return;
+    const wrongKeyEl = virtualKeyboard.querySelector(`.kb-key[data-key="${CSS.escape(pressedKey)}"]`);
+    const correctKeyEl = expectedKey ? virtualKeyboard.querySelector(`.kb-key[data-key="${CSS.escape(expectedKey)}"]`) : null;
+    if (wrongKeyEl) {
+        wrongKeyEl.classList.remove('kb-wrong');
+        void wrongKeyEl.offsetWidth;
+        wrongKeyEl.classList.add('kb-wrong');
+        setTimeout(() => wrongKeyEl.classList.remove('kb-wrong'), 600);
+    }
+    if (correctKeyEl) {
+        correctKeyEl.classList.remove('kb-correct');
+        void correctKeyEl.offsetWidth;
+        correctKeyEl.classList.add('kb-correct');
+        setTimeout(() => correctKeyEl.classList.remove('kb-correct'), 600);
     }
 }
 

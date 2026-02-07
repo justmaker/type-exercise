@@ -254,6 +254,9 @@ function toggleAutoShowEncoding(enabled) {
         // 如果開啟自動顯示且在中文模式，立即顯示當前字符的編碼
         showEncodingHint();
     }
+
+    // 連動虛擬鍵盤顯示
+    updateVirtualKeyboardVisibility();
 }
 
 // ===== 主題管理 =====
@@ -833,6 +836,7 @@ function completeTest() {
     resultsDiv.classList.remove('hidden');
     restartBtn.classList.remove('hidden');
     hideEncodingHint();
+    if (virtualKeyboard) virtualKeyboard.classList.add('hidden');
 }
 
 // ===== 排行榜功能 =====
@@ -937,36 +941,13 @@ function getCurrentChar() {
 }
 
 async function showEncodingHint() {
-    const inputText = inputArea.value;
-
-    // 字碼模式特殊處理
+    // 字碼模式不顯示拆碼框（改用虛擬鍵盤提示）
     if (contentMode === 'code') {
-        const currentIndex = inputText.length;
-        if (currentIndex >= currentPassage.length) return;
-
-        const code = currentPassage[currentIndex];
-        const codeSet = CODE_CHARACTERS[codeType];
-
-        hintChar.textContent = code;
-
-        if (codeSet.keyMap) {
-            // 找到對應的按鍵
-            const key = Object.keys(codeSet.keyMap).find(k => codeSet.keyMap[k] === code);
-            hintZhuyin.textContent = `按鍵: ${key || '?'}`;
-            hintCangjie.textContent = '-';
-            hintBoshiamy.textContent = '-';
-            hintPinyin.textContent = '-';
-        } else {
-            // 英文模式
-            hintZhuyin.textContent = `按鍵: ${code}`;
-            hintCangjie.textContent = '-';
-            hintBoshiamy.textContent = '-';
-            hintPinyin.textContent = '-';
-        }
-
-        encodingHint.classList.remove('hidden');
+        hideEncodingHint();
         return;
     }
+
+    const inputText = inputArea.value;
 
     // 計算實際已正確輸入的字符數量（作為當前位置）
     let correctCount = 0;
@@ -1096,6 +1077,7 @@ function switchContentMode(mode) {
     }
 
     updateNewsCount();
+    updateEncodingLabel();
     updateVirtualKeyboardVisibility();
     updateVirtualKeyboard();
     startGame();
@@ -1135,6 +1117,9 @@ function initCodeTypeControls() {
 // ===== 字碼模式按鍵處理 =====
 
 function handleCodeKeypress(key) {
+    // 清除上次的鍵盤高亮
+    clearKeyboardHighlights();
+
     // 啟動計時器
     if (startTime === null) {
         startTime = Date.now();
@@ -1228,11 +1213,18 @@ function updateVirtualKeyboard() {
 
 function updateVirtualKeyboardVisibility() {
     if (!virtualKeyboard) return;
-    if (contentMode === 'code') {
+    if (contentMode === 'code' && autoShowEncoding) {
         virtualKeyboard.classList.remove('hidden');
     } else {
         virtualKeyboard.classList.add('hidden');
     }
+}
+
+function updateEncodingLabel() {
+    if (!autoShowEncodingCheckbox) return;
+    const label = autoShowEncodingCheckbox.parentElement;
+    if (!label) return;
+    label.lastChild.textContent = contentMode === 'code' ? ' 持續顯示鍵盤' : ' 持續顯示中文拆碼';
 }
 
 function getPhysicalKeyForCode(codeChar) {
@@ -1248,22 +1240,19 @@ function getPhysicalKeyForCode(codeChar) {
     return null;
 }
 
+function clearKeyboardHighlights() {
+    if (!virtualKeyboard) return;
+    virtualKeyboard.querySelectorAll('.kb-wrong').forEach(el => el.classList.remove('kb-wrong'));
+    virtualKeyboard.querySelectorAll('.kb-correct').forEach(el => el.classList.remove('kb-correct'));
+}
+
 function highlightKeyboardError(pressedKey, expectedKey) {
     if (!virtualKeyboard) return;
+    clearKeyboardHighlights();
     const wrongKeyEl = virtualKeyboard.querySelector(`.kb-key[data-key="${CSS.escape(pressedKey)}"]`);
     const correctKeyEl = expectedKey ? virtualKeyboard.querySelector(`.kb-key[data-key="${CSS.escape(expectedKey)}"]`) : null;
-    if (wrongKeyEl) {
-        wrongKeyEl.classList.remove('kb-wrong');
-        void wrongKeyEl.offsetWidth;
-        wrongKeyEl.classList.add('kb-wrong');
-        setTimeout(() => wrongKeyEl.classList.remove('kb-wrong'), 600);
-    }
-    if (correctKeyEl) {
-        correctKeyEl.classList.remove('kb-correct');
-        void correctKeyEl.offsetWidth;
-        correctKeyEl.classList.add('kb-correct');
-        setTimeout(() => correctKeyEl.classList.remove('kb-correct'), 600);
-    }
+    if (wrongKeyEl) wrongKeyEl.classList.add('kb-wrong');
+    if (correctKeyEl) correctKeyEl.classList.add('kb-correct');
 }
 
 // ===== 事件監聯 =====

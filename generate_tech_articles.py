@@ -87,7 +87,6 @@ def generate_unique_articles(lang='zh'):
 
         # Make titles unique by adding context
         if i >= len(base):
-            cycle = i // len(base) + 1
             contexts_zh = ["應用擴展", "技術升級", "商業突破", "研究進展", "產業應用"]
             contexts_en = ["Application Expansion", "Technology Upgrade", "Commercial Breakthrough", "Research Progress", "Industry Application"]
             contexts = contexts_zh if lang == 'zh' else contexts_en

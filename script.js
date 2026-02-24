@@ -163,6 +163,7 @@ let persistentEncodingCache = {};
 let loadingOverlay = null;
 let loadingStatus = null;
 let textDisplay = null;
+let charSpans = [];
 let inputArea = null;
 let resultsDiv = null;
 let wpmSpan = null;
@@ -759,10 +760,11 @@ function renderPassage() {
         .split('')
         .map((char, index) => `<span class="char" data-index="${index}">${char}</span>`)
         .join('');
+    charSpans = textDisplay.querySelectorAll('.char');
 }
 
 function updateDisplay(inputText) {
-    const chars = textDisplay.querySelectorAll('.char');
+    const chars = charSpans;
     let newErrorCount = 0;
 
     chars.forEach((charSpan, index) => {
@@ -1182,7 +1184,7 @@ function handleCodeKeypress(key) {
 function flashError() {
     // 視覺錯誤回饋
     const currentIndex = inputArea.value.length;
-    const chars = textDisplay.querySelectorAll('.char');
+    const chars = charSpans;
     if (chars[currentIndex]) {
         chars[currentIndex].classList.add('flash-error');
         setTimeout(() => {

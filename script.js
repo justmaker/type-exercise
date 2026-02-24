@@ -26,6 +26,17 @@ const STORAGE_KEYS = {
 // 資料版本號 - 更新此版本號會清除舊的快取資料
 const DATA_VERSION = '3.0';
 
+// HTML 逸出工具函式，防止 XSS
+function escapeHTML(str) {
+    if (str === null || str === undefined) return '';
+    return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+}
+
 // 字碼練習的字符集定義
 const CODE_CHARACTERS = {
     english: {
@@ -757,7 +768,7 @@ function startGame() {
 function renderPassage() {
     textDisplay.innerHTML = currentPassage
         .split('')
-        .map((char, index) => `<span class="char" data-index="${index}">${char}</span>`)
+        .map((char, index) => `<span class="char" data-index="${index}">${escapeHTML(char)}</span>`)
         .join('');
 }
 
@@ -900,10 +911,10 @@ function showAchievement(result) {
         achievementDiv.innerHTML = '🎉 <strong>新紀錄！</strong> 你創造了新的最高分數！';
         achievementDiv.className = 'achievement new-record';
     } else if (result.isTopFive) {
-        achievementDiv.innerHTML = `🏅 <strong>進入前五名！</strong> 目前排名第 ${result.currentRank} 名`;
+        achievementDiv.innerHTML = `🏅 <strong>進入前五名！</strong> 目前排名第 ${escapeHTML(result.currentRank)} 名`;
         achievementDiv.className = 'achievement top-five';
     } else {
-        achievementDiv.innerHTML = `目前排名第 ${result.currentRank} 名，繼續加油！`;
+        achievementDiv.innerHTML = `目前排名第 ${escapeHTML(result.currentRank)} 名，繼續加油！`;
         achievementDiv.className = 'achievement';
     }
 }
@@ -922,9 +933,9 @@ function renderLeaderboard(currentRank) {
         const medal = rank === 1 ? '🥇' : rank === 2 ? '🥈' : rank === 3 ? '🥉' : '';
 
         return `<li class="${isCurrentResult ? 'current' : ''}">
-            ${medal} <strong>${entry.score || (entry.wpm * entry.accuracy)}</strong> 分 
-            <span class="detail">(${entry.wpm} WPM / ${entry.accuracy}%)</span>
-            <span class="timestamp">${entry.timestamp}</span>
+            ${medal} <strong>${escapeHTML(entry.score || (entry.wpm * entry.accuracy))}</strong> 分
+            <span class="detail">(${escapeHTML(entry.wpm)} WPM / ${escapeHTML(entry.accuracy)}%)</span>
+            <span class="timestamp">${escapeHTML(entry.timestamp)}</span>
             ${isCurrentResult ? '<span class="current-badge">← 本次</span>' : ''}
         </li>`;
     }).join('');
